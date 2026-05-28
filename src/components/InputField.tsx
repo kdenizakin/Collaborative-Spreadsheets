@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "primereact/button";
 
-function InputField() {
+function InputField(props: any) {
   const [content, setContent] = useState("");
 
   return (
@@ -15,7 +15,6 @@ function InputField() {
             onChange={(e) => setContent(e.target.value)}
           ></input>
         </div>
-        {content !== "" && <p>{content}</p>}
       </div>
     </>
   );
