@@ -1,0 +1,21 @@
+.app {
+  width: 100%;
+  height: 98vh;
+}
+
+.input-field {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.spreadsheet {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.body {
+  width: 100%;
+  height: 98vh;
+}
