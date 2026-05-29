@@ -17,7 +17,7 @@ function Cell(props: any) {
       <div className="grid">
         <div className="col-12 md:col-6 lg:col-12">
           <>
-            <p>row id: {props.newRowId}</p>
+            <p>row id: {props.rowId}</p>
             <InputField cellContent={content} setCellContent={setContent} />
             {content}
           </>
