@@ -93,9 +93,10 @@ function SpreadSheet() {
             <InputField />
           </>
         ),
-        positionIndex: 0,
+        positionIndex: rowPositionIndex,
       },
     ]);
+    setRowPositionIndex(rowPositionIndex + 1);
   };
 
   const addColumn = (column: ColumnType): void => {
@@ -130,7 +131,7 @@ function SpreadSheet() {
     let newRowId: string = uuidv4(10);
     let index: number = row.positionIndex;
     yRows.insert(index, [newRowId]);
-
+    console.log(index);
     let ids: CellId[] = [];
     for (let i = 0; i < yRows._length; i++) {
       let colIdTemp: string = yRows.get(i) as string;
@@ -143,14 +144,21 @@ function SpreadSheet() {
       ids.push(cellId);
       yMap.set(cellId.colIdxrowId, "");
     }
-    console.log(index);
-    setColumns((columns) => [
-      ...columns.slice(0, index),
-      { id: newColId, content: "col", positionIndex: index - 1 },
-      ...columns.slice(index),
+    setRows((rows) => [
+      ...rows.slice(0, index),
+      {
+        id: newRowId,
+        content: (
+          <>
+            <p>row id: {newRowId}</p>
+            <InputField />
+          </>
+        ),
+        positionIndex: index - 1,
+      },
+      ...rows.slice(index),
     ]);
-
-    updateColumnPositions(index);
+    updateRowPositions(index);
   };
 
   function updateColumnPositions(startIndex: number): void {
@@ -175,29 +183,39 @@ function SpreadSheet() {
     });
   }
 
+  const addRowTemplate = (rowData: RowType) => {
+    console.log(rowData.positionIndex);
+    return (
+      <Button
+        icon="pi pi-arrow-circle-up"
+        className="button-spreadsheet-header"
+        text
+        onClick={() => addRow(rowData)}
+      ></Button>
+    );
+  };
+
   return (
     <>
       <div className="grid">
-        <div className="col-1"></div>
-        <div className="col-1">
-          <div className="text-center p-1 border-round-sm bg-primary font-bold">
-            <Button icon="pi pi-refresh" raised onClick={appendColumn}>
-              Add Column
-            </Button>
-          </div>
-        </div>
-        <div className="col-1">
-          <div className="text-center p-1 border-round-sm bg-primary font-bold">
-            <Button icon="pi pi-refresh" raised onClick={appendRow}>
-              Add Row
-            </Button>
-          </div>
-        </div>
-        <div className="col-9"></div>
-        <div className="col-11">
+        <Button
+          className="button-spreadsheet-header"
+          icon="pi pi-arrow-circle-right"
+          text
+          onClick={appendColumn}
+        ></Button>
+        <Button
+          className="button-spreadsheet-header"
+          icon="pi pi-arrow-circle-down"
+          text
+          onClick={appendRow}
+        />
+
+        <div className="col-10"></div>
+        <div className="col-12">
           <div className="text-center p-3 border-round-sm bg-primary font-bold">
             <DataTable value={rows} className="spread_sheet">
-              {columns.map((column: ColumnType) => (
+              {columns.map((column: ColumnType, index) => (
                 <Column
                   key={column.id}
                   field="content"
@@ -211,6 +229,16 @@ function SpreadSheet() {
                   }
                 />
               ))}
+              <Column
+                body={(rowData, options) => (
+                  <Button
+                    icon="pi pi-arrow-circle-up"
+                    className="button-spreadsheet-header"
+                    text
+                    onClick={() => addRow(rows[options.rowIndex])}
+                  ></Button>
+                )}
+              />
             </DataTable>
           </div>
         </div>
