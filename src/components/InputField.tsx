@@ -1,9 +1,4 @@
-import { useState, useEffect } from "react";
-import { Button } from "primereact/button";
-
 function InputField(props: any) {
-  const [content, setContent] = useState("");
-
   return (
     <>
       <div className="grid">
@@ -11,8 +6,8 @@ function InputField(props: any) {
           <input
             className="input-field"
             type="text"
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
+            value={props.cellContent}
+            onChange={(e) => props.setCellContent(e.target.value)}
           ></input>
         </div>
       </div>

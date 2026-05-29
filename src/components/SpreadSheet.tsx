@@ -1,15 +1,15 @@
 import { useState, useEffect } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
-import InputField from "./InputField.tsx";
 import ColumnHeader from "./ColumnHeader.tsx";
+import Cell from "./Cell.tsx";
 import { Button } from "primereact/button";
 import { WebsocketProvider } from "y-websocket";
 import { nanoid as uuidv4 } from "nanoid";
 import * as Y from "yjs";
 
 type ColumnType = { id: string; content: string; positionIndex: number };
-type RowType = { id: string; content: any; positionIndex: number };
+type RowType = { id: string; positionIndex: number };
 
 const yDoc = new Y.Doc();
 
@@ -40,12 +40,10 @@ function SpreadSheet() {
   const [rowPositionIndex, setRowPositionIndex] = useState<number>(0);
 
   const appendColumn = (): void => {
-    console.log("here");
     let newColId: string = uuidv4(10);
     let newColIdTempWEmpty: string = newColId.concat(" ");
     yColumns.push([newColId]);
 
-    let ids: CellId[] = [];
     for (let i = 0; i < yRows._length; i++) {
       // row id is fixesd, we need col ids
       let rowIdTemp: string = yRows.get(i) as string;
@@ -55,7 +53,6 @@ function SpreadSheet() {
         colId: newColId,
         colIdxrowId: newColIdTempWEmpty.concat(rowIdTempWEmpty),
       };
-      ids.push(cellId);
       yMap.set(cellId.colIdxrowId, "");
     }
 
@@ -70,7 +67,6 @@ function SpreadSheet() {
     let newRowId: string = uuidv4(10);
     yRows.push([newRowId]);
 
-    let ids: CellId[] = [];
     for (let i = 0; i < yColumns._length; i++) {
       // row id is fixesd, we need col ids
       let colIdTemp: string = yColumns.get(i) as string;
@@ -80,19 +76,12 @@ function SpreadSheet() {
         rowId: newRowId,
         colIdxrowId: colIdTempWEmpty.concat(newRowId.toString()),
       };
-      ids.push(cellId);
       yMap.set(cellId.colIdxrowId, "");
     }
     setRows((rows) => [
       ...rows,
       {
         id: newRowId,
-        content: (
-          <>
-            <p>row id: {newRowId}</p>
-            <InputField />
-          </>
-        ),
         positionIndex: rowPositionIndex,
       },
     ]);
@@ -105,7 +94,6 @@ function SpreadSheet() {
     let index: number = column.positionIndex;
     yColumns.insert(index, [newColId]);
 
-    let ids: CellId[] = [];
     for (let i = 0; i < yRows._length; i++) {
       let rowIdTemp: string = yRows.get(i) as string;
       let cellId: CellId = {
@@ -113,10 +101,8 @@ function SpreadSheet() {
         colId: newColId,
         colIdxrowId: newColIdTempWEmpty.concat(rowIdTemp.toString()),
       };
-      ids.push(cellId);
       yMap.set(cellId.colIdxrowId, "");
     }
-    console.log(ids);
     console.log(yMap);
     setColumns((columns) => [
       ...columns.slice(0, index),
@@ -131,7 +117,6 @@ function SpreadSheet() {
     let newRowId: string = uuidv4(10);
     let index: number = row.positionIndex;
     yRows.insert(index, [newRowId]);
-    console.log(index);
     let ids: CellId[] = [];
     for (let i = 0; i < yRows._length; i++) {
       let colIdTemp: string = yRows.get(i) as string;
@@ -148,12 +133,6 @@ function SpreadSheet() {
       ...rows.slice(0, index),
       {
         id: newRowId,
-        content: (
-          <>
-            <p>row id: {newRowId}</p>
-            <InputField />
-          </>
-        ),
         positionIndex: index - 1,
       },
       ...rows.slice(index),
@@ -183,18 +162,6 @@ function SpreadSheet() {
     });
   }
 
-  const addRowTemplate = (rowData: RowType) => {
-    console.log(rowData.positionIndex);
-    return (
-      <Button
-        icon="pi pi-arrow-circle-up"
-        className="button-spreadsheet-header"
-        text
-        onClick={() => addRow(rowData)}
-      ></Button>
-    );
-  };
-
   return (
     <>
       <div className="grid">
@@ -215,7 +182,7 @@ function SpreadSheet() {
         <div className="col-12">
           <div className="text-center p-3 border-round-sm bg-primary font-bold">
             <DataTable value={rows} className="spread_sheet">
-              {columns.map((column: ColumnType, index) => (
+              {columns.map((column: ColumnType) => (
                 <Column
                   key={column.id}
                   field="content"
@@ -227,6 +194,14 @@ function SpreadSheet() {
                       />
                     </>
                   }
+                  body={(rowData) => (
+                    <Cell
+                      initialValue={rowData[column.id]}
+                      rowId={rowData.id}
+                      colId={column.id}
+                      yMap={yMap}
+                    />
+                  )}
                 />
               ))}
               <Column
