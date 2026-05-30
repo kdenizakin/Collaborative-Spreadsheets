@@ -5,13 +5,17 @@ function ColumnHeader(props: any) {
   return (
     <>
       <div className="grid">
-        <div className="col-12 md:col-6 lg:col-12">
-          <Button
-            icon="pi pi-arrow-circle-left"
-            text
-            onClick={() => props.addColumn()}
-          ></Button>
-        </div>
+        <Button
+          icon="pi pi-arrow-circle-left"
+          text
+          onClick={() => props.addColumn(props.column)}
+        ></Button>
+        <Button
+          icon="pi pi-minus-circle"
+          text
+          className="remove-button"
+          onClick={() => props.removeColumn(props.column)}
+        ></Button>
         <div className="col-7 md:col-6 lg:col-12">
           <p>{props.columnId}</p>
         </div>

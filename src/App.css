@@ -23,3 +23,9 @@
 .button-spreadsheet-header {
   margin: 1rem;
 }
+
+.remove-button {
+  color: grey;
+  align-items: center;
+  justify-content: center;
+}

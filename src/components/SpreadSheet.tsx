@@ -110,7 +110,7 @@ function SpreadSheet() {
       ...columns.slice(index),
     ]);
 
-    updateColumnPositions(index);
+    increaseColumnPositionIndexes(index);
   };
 
   const addRow = (row: RowType): void => {
@@ -137,10 +137,10 @@ function SpreadSheet() {
       },
       ...rows.slice(index),
     ]);
-    updateRowPositions(index);
+    increaseRowPositionIndexes(index);
   };
 
-  function updateColumnPositions(startIndex: number): void {
+  function increaseColumnPositionIndexes(startIndex: number): void {
     setColumns((prevColumns) => {
       return prevColumns.map((col, i) => {
         if (i >= startIndex) {
@@ -151,7 +151,7 @@ function SpreadSheet() {
     });
   }
 
-  function updateRowPositions(startIndex: number): void {
+  function increaseRowPositionIndexes(startIndex: number): void {
     setRows((prevRows) => {
       return prevRows.map((row, i) => {
         if (i >= startIndex) {
@@ -162,21 +162,59 @@ function SpreadSheet() {
     });
   }
 
+  function removeColumn(column: ColumnType): void {
+    let columnsTemp: ColumnType[] = [...columns];
+    let index: number = column.positionIndex;
+    columnsTemp.splice(index, 1);
+    setColumns(columnsTemp);
+    decreaseColumnPositionIndexes(index);
+  }
+
+  function removeRow(row: RowType): void {
+    setRows((prevRows) => {
+      let index: number = row.positionIndex;
+
+      let updatedRows = [...prevRows];
+      updatedRows.splice(index, 1);
+
+      return updatedRows.map((row, i) => {
+        if (i >= index) {
+          return { ...row, positionIndex: row.positionIndex - 1 };
+        }
+        return row;
+      });
+    });
+
+    setRowPositionIndex((prev) => prev - 1);
+  }
+
+  function decreaseColumnPositionIndexes(startIndex: number): void {
+    setColumns((prevColumns) => {
+      return prevColumns.map((col, i) => {
+        if (i >= startIndex) {
+          return { ...col, positionIndex: col.positionIndex - 1 };
+        }
+        return col;
+      });
+    });
+    setColumnPositionIndex(columnPositionIndex - 1);
+  }
+
   return (
     <>
       <div className="grid">
-        <Button
-          className="button-spreadsheet-header"
-          icon="pi pi-arrow-circle-right"
-          text
-          onClick={appendColumn}
-        ></Button>
         <Button
           className="button-spreadsheet-header"
           icon="pi pi-arrow-circle-down"
           text
           onClick={appendRow}
         />
+        <Button
+          className="button-spreadsheet-header"
+          icon="pi pi-arrow-circle-right"
+          text
+          onClick={appendColumn}
+        ></Button>
 
         <div className="col-10"></div>
         <div className="col-12">
@@ -190,7 +228,9 @@ function SpreadSheet() {
                     <>
                       <ColumnHeader
                         columnId={column.id}
-                        addColumn={() => addColumn(column)}
+                        column={column}
+                        addColumn={addColumn}
+                        removeColumn={removeColumn}
                       />
                     </>
                   }
@@ -206,12 +246,20 @@ function SpreadSheet() {
               ))}
               <Column
                 body={(rowData, options) => (
-                  <Button
-                    icon="pi pi-arrow-circle-up"
-                    className="button-spreadsheet-header"
-                    text
-                    onClick={() => addRow(rows[options.rowIndex])}
-                  ></Button>
+                  <>
+                    <Button
+                      icon="pi pi-arrow-circle-up"
+                      text
+                      onClick={() => addRow(rows[options.rowIndex])}
+                    ></Button>
+
+                    <Button
+                      icon="pi pi-minus-circle"
+                      text
+                      className="remove-button"
+                      onClick={() => removeRow(rows[options.rowIndex])}
+                    ></Button>
+                  </>
                 )}
               />
             </DataTable>
