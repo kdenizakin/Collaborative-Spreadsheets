@@ -33,6 +33,30 @@ function SpreadSheet() {
   /* const undoColumns = new Y.UndoManager(yColumns);
   const undoRows = new Y.UndoManager(yRows); */
 
+  useEffect(() => {
+    yMap.observe((yMapEvent: any) => {
+      yMapEvent.changes.keys; // => Map<string, { action: 'add'|'update'|'delete', oldValue: any}>
+
+      yMapEvent.changes.keys.forEach(
+        (change: { action: string; oldValue: any }, key: any) => {
+          if (change.action === "add") {
+            console.log(
+              `Property "${key}" was added. Initial value: "${yMap.get(key)}".`,
+            );
+          } else if (change.action === "update") {
+            console.log(
+              `Property "${key}" was updated. New value: "${yMap.get(key)}". Previous value: "${change.oldValue}".`,
+            );
+          } else if (change.action === "delete") {
+            console.log(
+              `Property "${key}" was deleted. New value: undefined. Previous value: "${change.oldValue}".`,
+            );
+          }
+        },
+      );
+    });
+  }, []);
+
   const [columns, setColumns] = useState<ColumnType[]>([]);
   const [rows, setRows] = useState<RowType[]>([]);
 
@@ -47,11 +71,10 @@ function SpreadSheet() {
     for (let i = 0; i < yRows._length; i++) {
       // row id is fixesd, we need col ids
       let rowIdTemp: string = yRows.get(i) as string;
-      let rowIdTempWEmpty: string = rowIdTemp.concat(" ");
       let cellId: CellId = {
         rowId: rowIdTemp,
         colId: newColId,
-        colIdxrowId: newColIdTempWEmpty.concat(rowIdTempWEmpty),
+        colIdxrowId: newColIdTempWEmpty.concat(rowIdTemp),
       };
       yMap.set(cellId.colIdxrowId, "");
     }
@@ -166,9 +189,20 @@ function SpreadSheet() {
     let columnsTemp: ColumnType[] = [...columns];
     let index: number = column.positionIndex;
     columnsTemp.splice(index, 1);
-    if (yColumns.get(index) !== undefined) yColumns.delete(index);
-    setColumns(columnsTemp);
-    decreaseColumnPositionIndexes(index);
+
+    /*     let cellIdsToBeRemoved: string[] = getCellIds(column.id);
+     */
+    if (yColumns.get(index) !== undefined) {
+      yColumns.delete(index);
+      setColumns(columnsTemp);
+      decreaseColumnPositionIndexes(index);
+      /* 
+      for (let i = 0; i < cellIdsToBeRemoved.length; i++) {
+        console.log(yMap.has(cellIdsToBeRemoved[i]));
+        console.log(yMap._map.delete(cellIdsToBeRemoved[i]));
+        console.log(yMap.has(cellIdsToBeRemoved[i]));
+      } */
+    }
   }
 
   function removeRow(row: RowType): void {

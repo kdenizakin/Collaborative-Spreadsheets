@@ -12,13 +12,22 @@ function Cell(props: any) {
 
   const [content, setContent] = useState<string>(getInitialContent());
 
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setContent(e.target.value);
+    props.yMap.set(cellId, e.target.value);
+  };
+
   return (
     <>
       <div className="grid">
         <div className="col-12 md:col-6 lg:col-12">
           <>
             <p>row id: {props.rowId}</p>
-            <InputField cellContent={content} setCellContent={setContent} />
+            <InputField
+              cellContent={content}
+              setCellContent={setContent}
+              handleChange={handleChange}
+            />
             {content}
           </>
         </div>

@@ -7,7 +7,7 @@ function InputField(props: any) {
             className="input-field"
             type="text"
             value={props.cellContent}
-            onChange={(e) => props.setCellContent(e.target.value)}
+            onChange={props.handleChange}
           ></input>
         </div>
       </div>
