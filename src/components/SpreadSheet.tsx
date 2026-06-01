@@ -166,6 +166,7 @@ function SpreadSheet() {
     let columnsTemp: ColumnType[] = [...columns];
     let index: number = column.positionIndex;
     columnsTemp.splice(index, 1);
+    if (yColumns.get(index) !== undefined) yColumns.delete(index);
     setColumns(columnsTemp);
     decreaseColumnPositionIndexes(index);
   }
@@ -176,7 +177,7 @@ function SpreadSheet() {
 
       let updatedRows = [...prevRows];
       updatedRows.splice(index, 1);
-
+      if (yRows.get(index) !== undefined) yRows.delete(index);
       return updatedRows.map((row, i) => {
         if (i >= index) {
           return { ...row, positionIndex: row.positionIndex - 1 };
