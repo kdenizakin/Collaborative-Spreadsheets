@@ -6,8 +6,8 @@ function InputField(props: any) {
           <input
             className="input-field"
             type="text"
-            value={props.cellContent}
-            onChange={props.handleChange}
+            defaultValue={props.cellContent}
+            onBlur={props.handleChange}
           ></input>
         </div>
       </div>

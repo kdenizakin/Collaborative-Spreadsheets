@@ -8,7 +8,7 @@ function ColumnHeader(props: any) {
         <Button
           icon="pi pi-arrow-circle-left"
           text
-          onClick={() => props.addColumn(props.column)}
+          onClick={() => props.addColumn(props.column, false)}
         ></Button>
         <Button
           icon="pi pi-minus-circle"

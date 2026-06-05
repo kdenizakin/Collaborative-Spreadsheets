@@ -1,16 +1,43 @@
-import { useState, useRef } from "react";
-
+import { useEffect, useState } from "react";
 import "./App.css";
 import "/node_modules/primeflex/primeflex.css";
 import "primeicons/primeicons.css";
-
-import { PrimeReactProvider, PrimeReactContext } from "primereact/api";
+import * as Y from "yjs";
 import SpreadSheet from "./components/SpreadSheet.tsx";
+import { WebsocketProvider } from "y-websocket";
+
+//-----------------------------Yjs Structures-----------------------------
+const yDoc = new Y.Doc();
+const yMap = yDoc.getMap("spreadsheet");
+const yColumns: Y.Array<unknown> = yDoc.getArray("columns");
+const yRows = yDoc.getArray("rows");
+const undoColumns = new Y.UndoManager(yColumns);
+const undoRows = new Y.UndoManager(yRows);
+const yColKeep = yDoc.getMap("column-keep");
+const yRowKeep = yDoc.getMap("row-keep");
+//------------------------------------------------------------------------
+const wsProvider = new WebsocketProvider(
+  "ws://localhost:1235",
+  "my-roomname",
+  yDoc,
+);
 
 function App() {
+  wsProvider.on("status", (event) => {
+    console.log(event.status); // logs "connected" or "disconnected"
+  });
+
   return (
     <>
-      <SpreadSheet className="spreadsheet" />
+      <SpreadSheet
+        className="spreadsheet"
+        yDoc={yDoc}
+        yMap={yMap}
+        yColumns={yColumns}
+        yRows={yRows}
+        yColKeep={yColKeep}
+        yRowKeep={yRowKeep}
+      />
     </>
   );
 }
