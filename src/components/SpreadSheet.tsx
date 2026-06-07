@@ -5,6 +5,7 @@ import ColumnHeader from "./ColumnHeader.tsx";
 import Cell from "./Cell.tsx";
 import { Button } from "primereact/button";
 import { nanoid as uuidv4 } from "nanoid";
+import * as Y from "yjs";
 
 //-----------------------------Types-----------------------------
 type ColumnType = { id: string; positionIndex: number };
@@ -28,13 +29,7 @@ function SpreadSheet(props: any) {
     yRowKeep,
   } = props; //yjs Structures
 
-  const [spreadsheet, setSpreadsheet] = useState([
-    [undefined, undefined, undefined],
-    [undefined, undefined, undefined],
-    [undefined, undefined, undefined],
-  ]);
-
-  ////-----------------------------React States-----------------------------
+  //-----------------------------React States-----------------------------
   const [columns, setColumns] = useState<ColumnType[]>([]);
   const [rows, setRows] = useState<RowType[]>([]);
   const [columnPositionIndex, setColumnPositionIndex] = useState<number>(0);
@@ -42,20 +37,15 @@ function SpreadSheet(props: any) {
 
   //------------------------------------------------------------------------
 
+  //-----------------------------YColumns/YRows Observers-----------------------------
   useEffect(() => {
     const observer = (event: any) => {
       event.changes.delta.forEach(
         (change: { insert: string; delete?: any }, key: any) => {
           if (change.insert !== undefined) {
-            console.log(
-              `Property "${change.insert}" was added. Initial value: "${yMap.get(key)}".`,
-            );
-
-            let index: number = 0;
+            let index: number = findYElement(change.insert[0], yColumns);
             for (let i = 0; i < yColumns.length; i++) {
-              if (change.insert[0] === yColumns.get(i)) {
-                index = i;
-              }
+              if (change.insert[0] === yColumns.get(i)) index = i;
             }
             setColumns((columns) => [
               ...columns.slice(0, index),
@@ -63,13 +53,24 @@ function SpreadSheet(props: any) {
               ...columns.slice(index),
             ]);
             increaseColumnPositionIndexes(index);
-            console.log(columns);
           } else if (change.delete !== undefined) {
             console.log(
               `Property "${key}" was deleted. New value: "${yMap.get(key)}". Previous value: "".`,
             );
           }
         },
+      );
+      const deletedIds = new Set<string>();
+
+      event.changes.deleted.forEach((item: any) => {
+        const deletedValues = item.content.getContent() as string[];
+        deletedValues.forEach((id) => deletedIds.add(id));
+      });
+
+      setColumns((prev) =>
+        prev
+          .filter((c) => !deletedIds.has(c.id))
+          .map((c, i) => ({ ...c, positionIndex: i })),
       );
     };
 
@@ -85,16 +86,7 @@ function SpreadSheet(props: any) {
       event.changes.delta.forEach(
         (change: { insert: string; delete?: any }, key: any) => {
           if (change.insert !== undefined) {
-            console.log(
-              `Property "${change.insert}" was added. Initial value: "${yMap.get(key)}".`,
-            );
-
-            let index: number = 0;
-            for (let i = 0; i < yRows.length; i++) {
-              if (change.insert[0] === yRows.get(i)) {
-                index = i;
-              }
-            }
+            let index: number = findYElement(change.insert[0], yRows);
             setRows((rows) => [
               ...rows.slice(0, index),
               {
@@ -104,12 +96,20 @@ function SpreadSheet(props: any) {
               ...rows.slice(index),
             ]);
             increaseRowPositionIndexes(index);
-          } else if (change.delete !== undefined) {
-            console.log(
-              `Property "${key}" was deleted. New value: "${yMap.get(key)}". Previous value: "".`,
-            );
           }
         },
+      );
+      const deletedIds = new Set<string>();
+
+      event.changes.deleted.forEach((item: any) => {
+        const deletedValues = item.content.getContent() as string[];
+        deletedValues.forEach((id) => deletedIds.add(id));
+      });
+
+      setRows((prev) =>
+        prev
+          .filter((r) => !deletedIds.has(r.id))
+          .map((r, i) => ({ ...r, positionIndex: i })),
       );
     };
 
@@ -120,8 +120,16 @@ function SpreadSheet(props: any) {
     };
   }, [yRows, rows]);
 
+  const findYElement = (id: string, yStructure: Y.Array<unknown>): number => {
+    let index: number = 0;
+    for (let i = 0; i < yStructure.length; i++) {
+      if (id === yStructure.get(i)) index = i;
+    }
+    return index;
+  };
+  //------------------------------------------------------------------------
+
   useEffect(() => {
-    // yMap observer. Handles cell and label changes.
     yMap.observe((yMapEvent: any) => {
       yMapEvent.changes.keys; // => Map<string, { action: 'add'|'update'|'delete', oldValue: any}>
 
@@ -131,10 +139,6 @@ function SpreadSheet(props: any) {
             console.log(
               `Property "${key}" was added. Initial value: "${yMap.get(key)}".`,
             );
-          } else if (change.action === "update") {
-            console.log(
-              `Property "${key}" was updated. New value: "${yMap.get(key)}". Previous value: "${change.oldValue}".`,
-            );
           } else if (change.action === "delete") {
             console.log(
               `Property "${key}" was deleted. Previous value: "${change.oldValue}".`,
@@ -143,7 +147,6 @@ function SpreadSheet(props: any) {
         },
       );
     });
-
     /*
     // Keep Map observers. Handle undo of deletion if keep flag was set.
     yColKeep.observe((event) => {
@@ -166,7 +169,6 @@ function SpreadSheet(props: any) {
         yRowKeep.clear();
       }
     }); */
-
     // Undo manager listeners. Filter out insertions, since they do not need to be undone.
     /* undoColumns.on("stack-item-added", () => {
       undoColumns.undoStack.forEach((item, index) => {
@@ -184,7 +186,7 @@ function SpreadSheet(props: any) {
 
   const addColumn = (column: ColumnType, ifAppend: boolean): void => {
     let newColId: string = uuidv4(10);
-    let newColIdTempWEmpty: string = newColId.concat(", ");
+    let newColIdTempWEmpty: string = newColId.concat(",");
 
     let index: number = 0;
     if (ifAppend === true) {
@@ -205,7 +207,6 @@ function SpreadSheet(props: any) {
       };
       yMap.set(cellId.colIdxrowId, "");
     }
-    console.log(yMap);
   };
 
   const addRow = (row: RowType, ifAppend: boolean): void => {
@@ -224,7 +225,7 @@ function SpreadSheet(props: any) {
     let ids: CellId[] = [];
     for (let i = 0; i < yRows._length; i++) {
       let colIdTemp: string = yRows.get(i) as string;
-      let colIdTempWEmpty: string = colIdTemp.concat(", ");
+      let colIdTempWEmpty: string = colIdTemp.concat(",");
       let cellId: CellId = {
         rowId: newRowId,
         colId: colIdTemp,
@@ -258,39 +259,22 @@ function SpreadSheet(props: any) {
   }
 
   function removeColumn(column: ColumnType): void {
-    let columnsTemp: ColumnType[] = [...columns];
     let index: number = column.positionIndex;
-    columnsTemp.splice(index, 1);
     const colId: string = yColumns.get(index) as string;
     if (yColKeep.has(colId)) {
       yColKeep.delete(colId);
     }
     if (yColumns.get(index) !== undefined) {
       yColumns.delete(index);
-      setColumns(columnsTemp);
-      decreaseColumnPositionIndexes(index);
     }
   }
 
   function removeRow(row: RowType): void {
-    setRows((prevRows) => {
-      let index: number = row.positionIndex;
-      let updatedRows = [...prevRows];
-      updatedRows.splice(index, 1);
-      if (yRows.get(index) !== undefined) yRows.delete(index);
-      const rowId: string = yRows.get(index) as string;
-      if (yRowKeep.has(rowId)) {
-        yRowKeep.delete(rowId);
-      }
-      return updatedRows.map((row, i) => {
-        if (i >= index) {
-          return { ...row, positionIndex: row.positionIndex - 1 };
-        }
-        return row;
-      });
-    });
+    let index: number = row.positionIndex;
+    if (yRows.get(index) !== undefined) yRows.delete(index);
 
-    setRowPositionIndex((prev) => prev - 1);
+    const rowId: string = yRows.get(index) as string;
+    if (yRowKeep.has(rowId)) yRowKeep.delete(rowId);
   }
 
   function decreaseColumnPositionIndexes(startIndex: number): void {
@@ -341,8 +325,6 @@ function SpreadSheet(props: any) {
                   }
                   body={(rowData: RowType) => (
                     <Cell
-                      spreadsheet={spreadsheet}
-                      setSpreadsheet={setSpreadsheet}
                       row={rowData}
                       col={columnData}
                       yDoc={yDoc}

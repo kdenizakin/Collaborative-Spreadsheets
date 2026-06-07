@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import InputField from "./InputField";
 
 type RemoveKeepOperationId = `c${number}.${number}`;
 
 function Cell(props: any) {
   const {
-    spreadsheet,
+    row,
+    col,
     yDoc,
     yMap,
     yColumns,
@@ -15,8 +16,7 @@ function Cell(props: any) {
     yColKeep,
     yRowKeep,
   } = props;
-
-  let cellId: string = props.col.id.concat(", " + props.row.id);
+  let cellId: string = props.col.id.concat("," + props.row.id);
 
   const getInitialContent = () => {
     const cellData = props.yMap.get(cellId);
@@ -26,30 +26,49 @@ function Cell(props: any) {
 
   const [content, setContent] = useState<string>(getInitialContent());
 
-  const handleCellChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setContent(e.target.value);
-    yMap.set(cellId, e.target.value);
+  useEffect(() => {
+    yMap.observe((yMapEvent: any) => {
+      yMapEvent.changes.keys.forEach(
+        (change: { action: string; oldValue: any }, key: any) => {
+          if (change.action === "update" && cellId === key) {
+            console.log(
+              `Property "${key}" was updated. New value: "${yMap.get(key)}". Previous value: "${change.oldValue}".`,
+            );
+            setContent(yMap.get(key));
+          } else if (
+            change.action === "add" &&
+            cellId === key &&
+            yMap.get(key) !== ""
+          ) {
+            console.log(
+              `Property "${key}" was updated. New value: "${yMap.get(key)}". Previous value: "${change.oldValue}".`,
+            );
+            setContent(yMap.get(key));
+          }
+        },
+      );
+    });
+  }, []);
 
-    if (e.target.value === "") {
-      if (!yMap.has(cellId))
-        //if ymap doesn't have that key. Can map and ycols/yrows diverge?
-        return;
+  const handleCellChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let colIdx: number = col.positionIndex;
+    let rowIdx: number = row.positionIndex;
+
+    if (e.target.value === "" || e.target.value === yMap.get(cellId)) {
+      return;
+      /*  if (!yMap.has(cellId))
+        //if ymap doesn't have that key. Can map and ycols/yrows diverge? */
     }
     yMap.set(cellId, e.target.value);
-    let keepId: RemoveKeepOperationId = `c${yDoc.clientID as number}.${1 as number}`;
-    yColKeep.set(props.col.id, [keepId]);
-    yRowKeep.set(props.row.id, [keepId]);
-    const newSpreadsheet = [...spreadsheet];
-    newSpreadsheet[props.row.positionIndex][props.col.positionIndex] =
-      e.target.value;
-    props.setSpreadsheet(newSpreadsheet);
 
-    console.log(yMap);
-    console.log(yColumns);
-    console.log(yRows);
-    console.log(yColKeep);
-    console.log(yRowKeep);
+    let keepId: RemoveKeepOperationId = `c${yDoc.clientID as number}.${1 as number}`;
+    yColKeep.set(col.id, [keepId]);
+    yRowKeep.set(row.id, [keepId]);
   };
+
+  useEffect(() => {
+    setContent(yMap.get(cellId) as string);
+  }, [yMap]);
 
   return (
     <>
@@ -57,11 +76,7 @@ function Cell(props: any) {
         <div className="col-12 md:col-6 lg:col-12">
           <>
             <p>row id: {props.row.id}</p>
-            <InputField
-              cellContent={content}
-              setCellContent={setContent}
-              handleChange={handleCellChange}
-            />
+            <InputField cellContent={content} handleChange={handleCellChange} />
             {content}
           </>
         </div>

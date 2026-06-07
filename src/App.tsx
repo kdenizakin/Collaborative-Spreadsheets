@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import "./App.css";
 import "/node_modules/primeflex/primeflex.css";
 import "primeicons/primeicons.css";
@@ -16,16 +15,20 @@ const undoRows = new Y.UndoManager(yRows);
 const yColKeep = yDoc.getMap("column-keep");
 const yRowKeep = yDoc.getMap("row-keep");
 //------------------------------------------------------------------------
+
 const wsProvider = new WebsocketProvider(
-  "ws://localhost:1235",
+  "ws://localhost:1234",
   "my-roomname",
   yDoc,
 );
 
 function App() {
-  wsProvider.on("status", (event) => {
-    console.log(event.status); // logs "connected" or "disconnected"
-  });
+  wsProvider.on(
+    "status",
+    (event: { status: "connected" | "disconnected" | "connecting" }) => {
+      console.log(event.status);
+    },
+  );
 
   return (
     <>
