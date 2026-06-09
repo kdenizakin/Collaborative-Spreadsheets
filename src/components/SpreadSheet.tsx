@@ -130,23 +130,6 @@ function SpreadSheet(props: any) {
   //------------------------------------------------------------------------
 
   useEffect(() => {
-    yMap.observe((yMapEvent: any) => {
-      yMapEvent.changes.keys; // => Map<string, { action: 'add'|'update'|'delete', oldValue: any}>
-
-      yMapEvent.changes.keys.forEach(
-        (change: { action: string; oldValue: any }, key: any) => {
-          if (change.action === "add") {
-            console.log(
-              `Property "${key}" was added. Initial value: "${yMap.get(key)}".`,
-            );
-          } else if (change.action === "delete") {
-            console.log(
-              `Property "${key}" was deleted. Previous value: "${change.oldValue}".`,
-            );
-          }
-        },
-      );
-    });
     /*
     // Keep Map observers. Handle undo of deletion if keep flag was set.
     yColKeep.observe((event) => {
@@ -186,7 +169,6 @@ function SpreadSheet(props: any) {
 
   const addColumn = (column: ColumnType, ifAppend: boolean): void => {
     let newColId: string = uuidv4(10);
-    let newColIdTempWEmpty: string = newColId.concat(",");
 
     let index: number = 0;
     if (ifAppend === true) {
@@ -198,12 +180,12 @@ function SpreadSheet(props: any) {
 
     yColumns.insert(index, [newColId]);
 
-    for (let i = 0; i < yRows._length; i++) {
+    for (let i = 0; i < yRows.length; i++) {
       let rowIdTemp: string = yRows.get(i) as string;
       let cellId: CellId = {
         rowId: rowIdTemp,
         colId: newColId,
-        colIdxrowId: newColIdTempWEmpty.concat(rowIdTemp.toString()),
+        colIdxrowId: `${newColId},${rowIdTemp}`,
       };
       yMap.set(cellId.colIdxrowId, "");
     }
@@ -223,13 +205,12 @@ function SpreadSheet(props: any) {
     yRows.insert(index, [newRowId]);
 
     let ids: CellId[] = [];
-    for (let i = 0; i < yRows._length; i++) {
-      let colIdTemp: string = yRows.get(i) as string;
-      let colIdTempWEmpty: string = colIdTemp.concat(",");
+    for (let i = 0; i < yColumns.length; i++) {
+      let colIdTemp: string = yColumns.get(i) as string;
       let cellId: CellId = {
         rowId: newRowId,
         colId: colIdTemp,
-        colIdxrowId: colIdTempWEmpty.concat(newRowId.toString()),
+        colIdxrowId: `${colIdTemp},${newRowId}`,
       };
       ids.push(cellId);
       yMap.set(cellId.colIdxrowId, "");
@@ -266,13 +247,26 @@ function SpreadSheet(props: any) {
     }
     if (yColumns.get(index) !== undefined) {
       yColumns.delete(index);
+      for (let i = 0; i < yRows.length; i++) {
+        let colIdTemp: string = column.id;
+        let rowIdTemp: string = yRows.get(i);
+        let cellIdTemp: string = `${colIdTemp},${rowIdTemp}`;
+        yMap.delete(cellIdTemp);
+      }
     }
   }
 
   function removeRow(row: RowType): void {
     let index: number = row.positionIndex;
-    if (yRows.get(index) !== undefined) yRows.delete(index);
-
+    if (yRows.get(index) !== undefined) {
+      yRows.delete(index);
+      for (let i = 0; i < yColumns.length; i++) {
+        let colIdTemp: string = yColumns.get(i);
+        let rowIdTemp: string = row.id;
+        let cellIdTemp: string = `${colIdTemp},${rowIdTemp}`;
+        yMap.delete(cellIdTemp);
+      }
+    }
     const rowId: string = yRows.get(index) as string;
     if (yRowKeep.has(rowId)) yRowKeep.delete(rowId);
   }
@@ -308,7 +302,12 @@ function SpreadSheet(props: any) {
         <div className="col-10"></div>
         <div className="col-12">
           <div className="text-center p-3 border-round-sm bg-primary font-bold">
-            <DataTable value={rows} className="spread_sheet">
+            <DataTable
+              key={columns.length}
+              value={rows}
+              dataKey="id"
+              className="spread_sheet"
+            >
               {columns.map((columnData: ColumnType) => (
                 <Column
                   key={columnData.id}
@@ -325,6 +324,7 @@ function SpreadSheet(props: any) {
                   }
                   body={(rowData: RowType) => (
                     <Cell
+                      key={`${columnData.id},${rowData.id}`}
                       row={rowData}
                       col={columnData}
                       yDoc={yDoc}

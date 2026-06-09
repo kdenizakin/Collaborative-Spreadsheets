@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import InputField from "./InputField";
 
 type RemoveKeepOperationId = `c${number}.${number}`;
@@ -16,7 +16,7 @@ function Cell(props: any) {
     yColKeep,
     yRowKeep,
   } = props;
-  let cellId: string = props.col.id.concat("," + props.row.id);
+  let cellId: string = `${col.id},${row.id}`;
 
   const getInitialContent = () => {
     const cellData = props.yMap.get(cellId);
@@ -25,24 +25,20 @@ function Cell(props: any) {
   };
 
   const [content, setContent] = useState<string>(getInitialContent());
+  const inputFieldRef = useRef(cellId);
 
   useEffect(() => {
     yMap.observe((yMapEvent: any) => {
       yMapEvent.changes.keys.forEach(
         (change: { action: string; oldValue: any }, key: any) => {
           if (change.action === "update" && cellId === key) {
-            console.log(
-              `Property "${key}" was updated. New value: "${yMap.get(key)}". Previous value: "${change.oldValue}".`,
-            );
+            console.log("this is?");
             setContent(yMap.get(key));
           } else if (
             change.action === "add" &&
             cellId === key &&
             yMap.get(key) !== ""
           ) {
-            console.log(
-              `Property "${key}" was updated. New value: "${yMap.get(key)}". Previous value: "${change.oldValue}".`,
-            );
             setContent(yMap.get(key));
           }
         },
@@ -54,7 +50,7 @@ function Cell(props: any) {
     let colIdx: number = col.positionIndex;
     let rowIdx: number = row.positionIndex;
 
-    if (e.target.value === "" || e.target.value === yMap.get(cellId)) {
+    if (e.target.value === yMap.get(cellId)) {
       return;
       /*  if (!yMap.has(cellId))
         //if ymap doesn't have that key. Can map and ycols/yrows diverge? */
