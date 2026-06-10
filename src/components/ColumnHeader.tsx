@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import { Button } from "primereact/button";
 
 function ColumnHeader(props: any) {

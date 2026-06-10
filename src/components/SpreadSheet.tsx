@@ -168,6 +168,8 @@ function SpreadSheet(props: any) {
     }); */
   }, []);
 
+  const buildSpreadsheet = () => {};
+
   const addColumn = (column: ColumnType, ifAppend: boolean): void => {
     let newColId: string = uuidv4(10);
 
@@ -272,22 +274,14 @@ function SpreadSheet(props: any) {
     if (yRowKeep.has(rowId)) yRowKeep.delete(rowId);
   }
 
-  function decreaseColumnPositionIndexes(startIndex: number): void {
-    setColumns((prevColumns) => {
-      return prevColumns.map((col, i) => {
-        if (i >= startIndex) {
-          return { ...col, positionIndex: col.positionIndex - 1 };
-        }
-        return col;
-      });
-    });
-    setColumnPositionIndex(columnPositionIndex - 1);
-  }
-
   return (
     <>
       <div className="grid">
         <SpreadSheetHeader
+          isConnected={props.isConnected}
+          setIsConnected={props.setIsConnected}
+          closeWsConnection={props.closeWsConnection}
+          reopenWsConnection={props.reopenWsConnection}
           addRow={addRow}
           addColumn={addColumn}
           yRows={yRows}

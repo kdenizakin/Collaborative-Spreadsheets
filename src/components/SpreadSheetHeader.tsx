@@ -1,6 +1,34 @@
 import { Button } from "primereact/button";
 
 function SpreadSheetHeader(props: any) {
+  function WsButton() {
+    if (props.isConnected) {
+      return (
+        <Button
+          data-testid="close-ws-connection-button"
+          className="button-spreadsheet-header"
+          icon="pi pi-times-circle"
+          text
+          onClick={() => props.closeWsConnection()}
+        >
+          {"close websocket connection"}
+        </Button>
+      );
+    }
+
+    return (
+      <Button
+        data-testid="close-ws-connection-button"
+        className="button-spreadsheet-header"
+        icon="pi pi-wifi"
+        text
+        onClick={() => props.reopenWsConnection()}
+      >
+        {"reopen websocket connection"}
+      </Button>
+    );
+  }
+
   return (
     <>
       <Button
@@ -19,6 +47,7 @@ function SpreadSheetHeader(props: any) {
           props.addColumn(props.yColumns.get(props.yColumns.length - 1), true)
         }
       ></Button>
+      <WsButton></WsButton>
     </>
   );
 }
