@@ -6,6 +6,7 @@ import Cell from "./Cell.tsx";
 import { Button } from "primereact/button";
 import { nanoid as uuidv4 } from "nanoid";
 import * as Y from "yjs";
+import SpreadSheetHeader from "./SpreadSheetHeader.tsx";
 
 //-----------------------------Types-----------------------------
 type ColumnType = { id: string; positionIndex: number };
@@ -286,18 +287,12 @@ function SpreadSheet(props: any) {
   return (
     <>
       <div className="grid">
-        <Button
-          className="button-spreadsheet-header"
-          icon="pi pi-arrow-circle-down"
-          text
-          onClick={() => addRow(yRows[yRows.length - 1], true)}
+        <SpreadSheetHeader
+          addRow={addRow}
+          addColumn={addColumn}
+          yRows={yRows}
+          yColumns={yColumns}
         />
-        <Button
-          className="button-spreadsheet-header"
-          icon="pi pi-arrow-circle-right"
-          text
-          onClick={() => addColumn(yColumns.get(yColumns.length - 1), true)}
-        ></Button>
 
         <div className="col-10"></div>
         <div className="col-12">
@@ -310,17 +305,18 @@ function SpreadSheet(props: any) {
             >
               {columns.map((columnData: ColumnType) => (
                 <Column
+                  data-testid="column"
                   key={columnData.id}
                   field="content"
                   header={
-                    <>
+                    <div data-testid="column-header">
                       <ColumnHeader
                         columnId={columnData.id}
                         column={columnData}
                         addColumn={addColumn}
                         removeColumn={removeColumn}
                       />
-                    </>
+                    </div>
                   }
                   body={(rowData: RowType) => (
                     <Cell
