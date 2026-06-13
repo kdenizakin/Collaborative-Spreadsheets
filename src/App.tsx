@@ -18,7 +18,7 @@ const yRowKeep = yDoc.getMap("row-keep");
 //------------------------------------------------------------------------
 
 const wsProvider = new WebsocketProvider(
-  "ws://localhost:1244",
+  "ws://localhost:1247",
   "my-roomname",
   yDoc,
 );
@@ -62,6 +62,8 @@ function App() {
         yRows={yRows}
         yColKeep={yColKeep}
         yRowKeep={yRowKeep}
+        undoColumns={undoColumns}
+        undoRows={undoRows}
       />
     </>
   );

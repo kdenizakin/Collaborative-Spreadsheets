@@ -4,28 +4,16 @@ import InputField from "./InputField";
 type RemoveKeepOperationId = `c${number}.${number}`;
 
 function Cell(props: any) {
-  const {
-    row,
-    col,
-    yDoc,
-    yMap,
-    yColumns,
-    yRows,
-    undoColumns,
-    undoRows,
-    yColKeep,
-    yRowKeep,
-  } = props;
+  const { row, col, yDoc, yMap, yColKeep, yRowKeep } = props;
   let cellId: string = `${col.id},${row.id}`;
 
   const getInitialContent = () => {
-    const cellData = props.yMap.get(cellId);
-    if (cellData === undefined || cellData.content === undefined) return "";
-    return cellData.content.arr;
+    const cellData: string = props.yMap.get(cellId);
+    if (cellData === undefined) return "";
+    return cellData;
   };
 
   const [content, setContent] = useState<string>(getInitialContent());
-  const inputFieldRef = useRef(cellId);
 
   useEffect(() => {
     yMap.observe((yMapEvent: any) => {
@@ -50,14 +38,15 @@ function Cell(props: any) {
     let colIdx: number = col.positionIndex;
     let rowIdx: number = row.positionIndex;
 
-    if (e.target.value === yMap.get(cellId)) {
+    if ((e.target.value as string) === yMap.get(cellId)) {
       return;
       /*  if (!yMap.has(cellId))
         //if ymap doesn't have that key. Can map and ycols/yrows diverge? */
     }
-    yMap.set(cellId, e.target.value);
+    yMap.set(cellId, e.target.value as string);
 
     let keepId: RemoveKeepOperationId = `c${yDoc.clientID as number}.${1 as number}`;
+    let arrayRefOfColKeep: RemoveKeepOperationId[] = yColKeep.get;
     yColKeep.set(col.id, [keepId]);
     yRowKeep.set(row.id, [keepId]);
   };

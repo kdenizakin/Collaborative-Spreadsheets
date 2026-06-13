@@ -131,11 +131,23 @@ function SpreadSheet(props: any) {
   //------------------------------------------------------------------------
 
   useEffect(() => {
-    /*
-    // Keep Map observers. Handle undo of deletion if keep flag was set.
-    yColKeep.observe((event) => {
+    yColKeep.observe((yMapEvent: any) => {
+      yMapEvent.changes.keys.forEach(
+        (change: { action: string; oldValue: any }, key: any) => {
+          if (change.action === "update") {
+            console.log("here1");
+          } else if (change.action === "add") {
+            recoverData(key, true, false);
+          }
+        },
+      );
+    });
+  }, []);
+
+  useEffect(() => {
+    yColKeep.observe((event: any) => {
       if (event.transaction.origin) {
-        yColKeep.forEach((_, key) => {
+        yColKeep.forEach((_, key: string) => {
           if (yColumns.toArray().indexOf(key) < 0) {
             undoColumns.undo();
           }
@@ -143,16 +155,42 @@ function SpreadSheet(props: any) {
         yColKeep.clear();
       }
     });
-    yRowKeep.observe((event) => {
+
+    yRowKeep.observe((event: any) => {
       if (event.transaction.origin) {
-        yRowKeep.forEach((_, key) => {
+        yRowKeep.forEach((_, key: string) => {
           if (yRows.toArray().indexOf(key) < 0) {
             undoRows.undo();
           }
         });
         yRowKeep.clear();
       }
+    });
+
+    // Undo manager listeners. Filter out insertions, since they do not need to be undone.
+    /* undoColumns.on("stack-item-added", () => {
+      undoColumns.undoStack.forEach((item, index) => {
+        if (item.insertions.clients.size > 0)
+          undoColumns.undoStack.splice(index, 1);
+      });
+    });
+
+    undoRows.on("stack-item-added", () => {
+      undoRows.undoStack.forEach((item, index) => {
+        if (item.insertions.clients.size > 0)
+          undoRows.undoStack.splice(index, 1);
+      });
     }); */
+  }, []);
+
+  //when keepcol is changed ifCol=true, ifRow=false and same for the keeprow and ifRow.
+  const recoverData = (id: string, ifCol: boolean, ifRow: boolean) => {
+    if (ifCol) {
+      return;
+    }
+  };
+
+  useEffect(() => {
     // Undo manager listeners. Filter out insertions, since they do not need to be undone.
     /* undoColumns.on("stack-item-added", () => {
       undoColumns.undoStack.forEach((item, index) => {
@@ -168,10 +206,19 @@ function SpreadSheet(props: any) {
     }); */
   }, []);
 
-  const buildSpreadsheet = () => {};
+  const buildSpreadsheetOnRefresh = () => {};
 
-  const addColumn = (column: ColumnType, ifAppend: boolean): void => {
-    let newColId: string = uuidv4(10);
+  const generateRandomUid = (): string => {
+    return uuidv4(10);
+  };
+
+  const addColumn = (
+    colId: string,
+    column: ColumnType,
+    ifAppend: boolean,
+  ): void => {
+    console.log(colId);
+    let newColId: string = colId;
 
     let index: number = 0;
     if (ifAppend === true) {
@@ -194,8 +241,8 @@ function SpreadSheet(props: any) {
     }
   };
 
-  const addRow = (row: RowType, ifAppend: boolean): void => {
-    let newRowId: string = uuidv4(10);
+  const addRow = (rowId: string, row: RowType, ifAppend: boolean): void => {
+    let newRowId: string = rowId;
 
     let index: number = 0;
     if (ifAppend === true) {
@@ -284,6 +331,7 @@ function SpreadSheet(props: any) {
           reopenWsConnection={props.reopenWsConnection}
           addRow={addRow}
           addColumn={addColumn}
+          generateRandomUid={generateRandomUid}
           yRows={yRows}
           yColumns={yColumns}
         />
@@ -307,6 +355,7 @@ function SpreadSheet(props: any) {
                       <ColumnHeader
                         columnId={columnData.id}
                         column={columnData}
+                        generateRandomUid={generateRandomUid}
                         addColumn={addColumn}
                         removeColumn={removeColumn}
                       />
@@ -319,10 +368,6 @@ function SpreadSheet(props: any) {
                       col={columnData}
                       yDoc={yDoc}
                       yMap={yMap}
-                      yColumns={yColumns}
-                      yRows={yRows}
-                      yColKeep={yColKeep}
-                      yRowKeep={yRowKeep}
                     />
                   )}
                 />
@@ -333,7 +378,13 @@ function SpreadSheet(props: any) {
                     <Button
                       icon="pi pi-arrow-circle-up"
                       text
-                      onClick={() => addRow(rows[options.rowIndex], false)}
+                      onClick={() =>
+                        addRow(
+                          generateRandomUid(),
+                          rows[options.rowIndex],
+                          false,
+                        )
+                      }
                     ></Button>
 
                     <Button
