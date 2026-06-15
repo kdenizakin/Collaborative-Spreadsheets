@@ -44,16 +44,15 @@ function SpreadSheet(props: any) {
       event.changes.delta.forEach(
         (change: { insert: string; delete?: any }, key: any) => {
           if (change.insert !== undefined) {
-            let index: number = findYElement(change.insert[0], yColumns);
-            for (let i = 0; i < yColumns.length; i++) {
-              if (change.insert[0] === yColumns.get(i)) index = i;
+            for (let j: number = 0; j < change.insert.length; j++) {
+              let index: number = findYElement(change.insert[j], yColumns);
+              setColumns((columns) => [
+                ...columns.slice(0, index),
+                { id: change.insert[j], positionIndex: index - 1 },
+                ...columns.slice(index),
+              ]);
+              increaseColumnPositionIndexes(index);
             }
-            setColumns((columns) => [
-              ...columns.slice(0, index),
-              { id: change.insert[0], positionIndex: index - 1 },
-              ...columns.slice(index),
-            ]);
-            increaseColumnPositionIndexes(index);
           } else if (change.delete !== undefined) {
             console.log(
               `Property "${key}" was deleted. New value: "${yMap.get(key)}". Previous value: "".`,
@@ -87,16 +86,18 @@ function SpreadSheet(props: any) {
       event.changes.delta.forEach(
         (change: { insert: string; delete?: any }, key: any) => {
           if (change.insert !== undefined) {
-            let index: number = findYElement(change.insert[0], yRows);
-            setRows((rows) => [
-              ...rows.slice(0, index),
-              {
-                id: change.insert[0],
-                positionIndex: index - 1,
-              },
-              ...rows.slice(index),
-            ]);
-            increaseRowPositionIndexes(index);
+            for (let i = 0; i < change.insert.length; i++) {
+              let index: number = findYElement(change.insert[i], yRows);
+              setRows((rows) => [
+                ...rows.slice(0, index),
+                {
+                  id: change.insert[i],
+                  positionIndex: index - 1,
+                },
+                ...rows.slice(index),
+              ]);
+              increaseRowPositionIndexes(index);
+            }
           }
         },
       );
@@ -120,29 +121,6 @@ function SpreadSheet(props: any) {
       yRows.unobserve(observer);
     };
   }, [yRows, rows]);
-
-  const findYElement = (id: string, yStructure: Y.Array<unknown>): number => {
-    let index: number = 0;
-    for (let i = 0; i < yStructure.length; i++) {
-      if (id === yStructure.get(i)) index = i;
-    }
-    return index;
-  };
-  //------------------------------------------------------------------------
-
-  useEffect(() => {
-    yColKeep.observe((yMapEvent: any) => {
-      yMapEvent.changes.keys.forEach(
-        (change: { action: string; oldValue: any }, key: any) => {
-          if (change.action === "update") {
-            console.log("here1");
-          } else if (change.action === "add") {
-            recoverData(key, true, false);
-          }
-        },
-      );
-    });
-  }, []);
 
   useEffect(() => {
     yColKeep.observe((event: any) => {
@@ -183,33 +161,18 @@ function SpreadSheet(props: any) {
     }); */
   }, []);
 
-  //when keepcol is changed ifCol=true, ifRow=false and same for the keeprow and ifRow.
-  const recoverData = (id: string, ifCol: boolean, ifRow: boolean) => {
-    if (ifCol) {
-      return;
-    }
-  };
-
-  useEffect(() => {
-    // Undo manager listeners. Filter out insertions, since they do not need to be undone.
-    /* undoColumns.on("stack-item-added", () => {
-      undoColumns.undoStack.forEach((item, index) => {
-        if (item.insertions.clients.size > 0)
-          undoColumns.undoStack.splice(index, 1);
-      });
-    });
-    undoRows.on("stack-item-added", () => {
-      undoRows.undoStack.forEach((item, index) => {
-        if (item.insertions.clients.size > 0)
-          undoRows.undoStack.splice(index, 1);
-      });
-    }); */
-  }, []);
-
-  const buildSpreadsheetOnRefresh = () => {};
+  //------------------------------------------------------------------------
 
   const generateRandomUid = (): string => {
     return uuidv4(10);
+  };
+
+  const findYElement = (id: string, yStructure: Y.Array<unknown>): number => {
+    let index: number = 0;
+    for (let i = 0; i < yStructure.length; i++) {
+      if (id === yStructure.get(i)) index = i;
+    }
+    return index;
   };
 
   const addColumn = (
@@ -217,7 +180,6 @@ function SpreadSheet(props: any) {
     column: ColumnType,
     ifAppend: boolean,
   ): void => {
-    console.log(colId);
     let newColId: string = colId;
 
     let index: number = 0;
@@ -368,6 +330,8 @@ function SpreadSheet(props: any) {
                       col={columnData}
                       yDoc={yDoc}
                       yMap={yMap}
+                      yColKeep={yColKeep}
+                      yRowKeep={yRowKeep}
                     />
                   )}
                 />

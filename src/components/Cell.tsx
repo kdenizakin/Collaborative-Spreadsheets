@@ -47,6 +47,7 @@ function Cell(props: any) {
 
     let keepId: RemoveKeepOperationId = `c${yDoc.clientID as number}.${1 as number}`;
     let arrayRefOfColKeep: RemoveKeepOperationId[] = yColKeep.get;
+    console.log(`keepId: ${keepId}, colId: ${col.id}, yColKeep: ${yColKeep}`);
     yColKeep.set(col.id, [keepId]);
     yRowKeep.set(row.id, [keepId]);
   };
