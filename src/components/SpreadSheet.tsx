@@ -28,6 +28,7 @@ function SpreadSheet(props: any) {
     undoRows,
     yColKeep,
     yRowKeep,
+    undoMap,
   } = props; //yjs Structures
 
   //-----------------------------React States-----------------------------
@@ -128,6 +129,7 @@ function SpreadSheet(props: any) {
         yColKeep.forEach((_, key: string) => {
           if (yColumns.toArray().indexOf(key) < 0) {
             undoColumns.undo();
+            undoMap.undo();
           }
         });
         yColKeep.clear();
@@ -139,6 +141,7 @@ function SpreadSheet(props: any) {
         yRowKeep.forEach((_, key: string) => {
           if (yRows.toArray().indexOf(key) < 0) {
             undoRows.undo();
+            undoMap.undo();
           }
         });
         yRowKeep.clear();
@@ -146,7 +149,7 @@ function SpreadSheet(props: any) {
     });
 
     // Undo manager listeners. Filter out insertions, since they do not need to be undone.
-    /* undoColumns.on("stack-item-added", () => {
+    undoColumns.on("stack-item-added", () => {
       undoColumns.undoStack.forEach((item, index) => {
         if (item.insertions.clients.size > 0)
           undoColumns.undoStack.splice(index, 1);
@@ -158,7 +161,7 @@ function SpreadSheet(props: any) {
         if (item.insertions.clients.size > 0)
           undoRows.undoStack.splice(index, 1);
       });
-    }); */
+    });
   }, []);
 
   //------------------------------------------------------------------------

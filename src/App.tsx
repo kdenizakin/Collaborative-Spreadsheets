@@ -13,6 +13,7 @@ const yColumns: Y.Array<unknown> = yDoc.getArray("columns");
 const yRows = yDoc.getArray("rows");
 const undoColumns = new Y.UndoManager(yColumns);
 const undoRows = new Y.UndoManager(yRows);
+const undoMap = new Y.UndoManager(yMap);
 const yColKeep = yDoc.getMap("column-keep");
 const yRowKeep = yDoc.getMap("row-keep");
 //------------------------------------------------------------------------
@@ -64,6 +65,7 @@ function App() {
         yRowKeep={yRowKeep}
         undoColumns={undoColumns}
         undoRows={undoRows}
+        undoMap={undoMap}
       />
     </>
   );

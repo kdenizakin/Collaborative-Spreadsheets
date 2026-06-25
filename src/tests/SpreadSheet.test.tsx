@@ -185,4 +185,78 @@ describe("SpreadSheet Tests", () => {
       ).toBeInTheDocument();
     });
   });
+
+  test("7. Undo manager restores deleted row", async () => {
+    renderComponent();
+
+    act(() => {
+      yColumns.insert(0, ["c1"]);
+      yRows.insert(0, ["r1"]);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("mock-cell-c1,r1")).toBeInTheDocument();
+    });
+
+    act(() => {
+      yRows.delete(0, 1);
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("mock-cell-c1,r1")).not.toBeInTheDocument();
+    });
+
+    act(() => {
+      undoManager.undo();
+    });
+
+    await waitFor(() => {
+      expect(yRows.length).toBe(1);
+      expect(yRows.get(0)).toBe("r1");
+      expect(screen.getByTestId("mock-cell-c1,r1")).toBeInTheDocument();
+    });
+  });
+
+  test("8. Offline modification restores deleted row/col with keep maps", async () => {
+    renderComponent();
+
+    //online client
+    const remoteDoc = new Y.Doc();
+    const remoteRows = remoteDoc.getArray("rows");
+    const remoteCols = remoteDoc.getArray("columns");
+
+    act(() => {
+      yColumns.insert(0, ["c1"]);
+      yRows.insert(0, ["r1"]);
+      remoteCols.insert(0, ["c1"]);
+      remoteRows.insert(0, ["r1"]);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("mock-cell-c1,r1")).toBeInTheDocument();
+    });
+
+    //here offline client makes some modifications.
+    act(() => {
+      yColKeep.set("c1", true);
+      yRowKeep.set("r1", true);
+    });
+
+    //online client removes
+    act(() => {
+      remoteRows.delete(0, 1);
+      remoteCols.delete(0, 1);
+    });
+
+    //reconnecting the offline client
+    act(() => {
+      const updateB = Y.encodeStateAsUpdate(remoteDoc);
+      Y.applyUpdate(doc, updateB);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("mock-col-header-c1")).toBeInTheDocument();
+      expect(screen.getByTestId("mock-cell-c1,r1")).toBeInTheDocument();
+    });
+  });
 });
