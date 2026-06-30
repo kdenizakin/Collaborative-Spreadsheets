@@ -16,6 +16,10 @@ type CellId = {
   rowId: string;
   colIdxrowId: string;
 };
+type CellUpdateWinsType = {
+  id: string;
+  content: string;
+};
 //---------------------------------------------------------------
 
 function SpreadSheet(props: any) {
@@ -202,7 +206,7 @@ function SpreadSheet(props: any) {
         colId: newColId,
         colIdxrowId: `${newColId},${rowIdTemp}`,
       };
-      yMap.set(cellId.colIdxrowId, "");
+      yMap.set(cellId.colIdxrowId, [{ id: "", content: "" }]);
     }
   };
 
@@ -228,7 +232,7 @@ function SpreadSheet(props: any) {
         colIdxrowId: `${colIdTemp},${newRowId}`,
       };
       ids.push(cellId);
-      yMap.set(cellId.colIdxrowId, "");
+      yMap.set(cellId.colIdxrowId, [{ id: "", content: "" }]);
     }
   };
 
