@@ -20,7 +20,6 @@ function Cell(props: any) {
       yMapEvent.changes.keys.forEach(
         (change: { action: string; oldValue: any }, key: any) => {
           if (change.action === "update" && cellId === key) {
-            console.log("this is?");
             setContent(yMap.get(key));
           } else if (
             change.action === "add" &&
@@ -60,11 +59,9 @@ function Cell(props: any) {
     <>
       <div className="grid">
         <div className="col-12 md:col-6 lg:col-12">
-          <>
-            <p>row id: {props.row.id}</p>
-            <InputField cellContent={content} handleChange={handleCellChange} />
-            {content}
-          </>
+          <p>row id: {props.row.id}</p>
+          <InputField cellContent={content} handleChange={handleCellChange} />
+          {content}
         </div>
       </div>
     </>
