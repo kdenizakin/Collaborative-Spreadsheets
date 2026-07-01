@@ -25,22 +25,39 @@ function Cell(props: any) {
   const [content, setContent] = useState<string>(getInitialContent());
 
   useEffect(() => {
-    yMap.observe((yMapEvent: any) => {
+    const observer = (yMapEvent: any) => {
       yMapEvent.changes.keys.forEach(
         (change: { action: string; oldValue: any }, key: any) => {
           if (change.action === "update" && cellId === key) {
-            let cellFinalContent: string = ""; //when all the concurrent operations are appended to each other (if they exist).
             if (yMap.get(cellId) === undefined) return;
-            console.log(yMap.get(cellId));
-            if (yMap.get(cellId).length > 1) {
-              //if there are concurrent operations.
+            if (
+              change.oldValue[0].id !== yMap.get(cellId)[0].id &&
+              change.oldValue[0].id !==
+                yMap.get(cellId)[yMap.get(cellId).length - 1].id
+            ) {
+              //means there are concurrent cell updates
+              yMap.get(cellId).push(change.oldValue[0]);
+            }
+            let cellFinalContent: string = ""; //when all the concurrent operations are appended to each other (if they exist).
 
-              for (let i = 0; i < yMap.get(cellId).length; i++) {
+            if (yMap.get(cellId).length > 1) {
+              console.log("observer");
+              console.log(yMap.get(cellId));
+              //if there are concurrent operations.
+              for (
+                let i = 0;
+                i < yMap.get(cellId).length &&
+                yDoc.clientID !== yMap.get(cellId)[i];
+                i++
+              ) {
                 cellFinalContent += yMap.get(cellId)[i].content;
               }
               setContent(cellFinalContent as string);
+              const firstId = yMap.get(cellId)[0].id;
+              yMap.set(cellId, [{ id: firstId, content: cellFinalContent }]);
             } else if (yMap.get(cellId).length == 1) {
               //if there are no concurrent operations
+              console.log("hereeee1");
               setContent(yMap.get(key)[0].content);
             }
           } else if (
@@ -48,46 +65,35 @@ function Cell(props: any) {
             cellId === key &&
             yMap.get(key).length === 1
           ) {
+            console.log("here2");
             setContent(yMap.get(key)[0].content);
           }
         },
       );
-    });
-  }, []);
+    };
+    yMap.observe(observer);
+    return () => {
+      yMap.unobserve(observer);
+    };
+  }, [yMap]);
 
   const handleCellChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-<<<<<<< HEAD
-    if ((e.target.value as string) === yMap.get(cellId)) return;
-
-    yMap.set(cellId, e.target.value as string);
-
-    let keepId: RemoveKeepOperationId = `c${yDoc.clientID as number}.${1 as number}`;
-    console.log(`keepId: ${keepId}, colId: ${col.id}, yColKeep: ${yColKeep}`);
-=======
-    console.log("here");
-    let colIdx: number = col.positionIndex;
-    let rowIdx: number = row.positionIndex;
-
-    if ((e.target.value as string) === yMap.get(cellId)) {
+    if ((e.target.value as string) === (yMap.get(cellId)[0].content as string))
       return;
-      /*  if (!yMap.has(cellId))
-        //if ymap doesn't have that key. Can map and ycols/yrows diverge? */
-    }
 
     let updateWinsSet: CellUpdateWinsType[] =
       yMap.get(cellId).length === 0
         ? []
         : (yMap.get(cellId) as CellUpdateWinsType[]);
 
-    //updateWinsSet = deleteSeenEntries(updateWinsSet);
-
-    updateWinsSet.push({ id: uuidv4(10), content: e.target.value });
+    updateWinsSet = deleteSeenEntries(updateWinsSet);
+    updateWinsSet = [{ id: yDoc.clientID, content: e.target.value }];
+    console.log(updateWinsSet);
     yMap.set(cellId, updateWinsSet);
 
     let keepId: RemoveKeepOperationId = `c${yDoc.clientID as number}.${1 as number}`;
     let arrayRefOfColKeep: RemoveKeepOperationId[] = yColKeep.get;
     //console.log(`keepId: ${keepId}, colId: ${col.id}, yColKeep: ${yColKeep}`);
->>>>>>> cf0ace5 (Implementation for cell update wins (not working currently))
     yColKeep.set(col.id, [keepId]);
     yRowKeep.set(row.id, [keepId]);
   };

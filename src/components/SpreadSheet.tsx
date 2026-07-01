@@ -33,6 +33,7 @@ function SpreadSheet(props: any) {
     yColKeep,
     yRowKeep,
     undoMap,
+    wsProvider,
   } = props; //yjs Structures
 
   //-----------------------------React States-----------------------------
