@@ -83,7 +83,6 @@ function Cell(props: any) {
 
     updateWinsSet = deleteSeenEntries(updateWinsSet);
     updateWinsSet = [{ id: yDoc.clientID, content: e.target.value }];
-    console.log(updateWinsSet);
     yMap.set(cellId, updateWinsSet);
 
     let keepId: RemoveKeepOperationId = `c${yDoc.clientID as number}.${1 as number}`;
@@ -105,10 +104,6 @@ function Cell(props: any) {
     }
     return updateWinsArray;
   };
-
-  useEffect(() => {
-    setContent("");
-  }, [yMap]);
 
   return (
     <>

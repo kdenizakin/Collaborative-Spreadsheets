@@ -1,9 +1,4 @@
 function InputField(props: any) {
-  const onTodoChange = (value) => {
-    props.setState({
-      name: value,
-    });
-  };
   return (
     <>
       <div className="grid">
