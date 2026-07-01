@@ -19,7 +19,7 @@ const yRowKeep = yDoc.getMap("row-keep");
 //------------------------------------------------------------------------
 
 const wsProvider = new WebsocketProvider(
-  "ws://localhost:1236",
+  "ws://localhost:1237",
   "my-roomname",
   yDoc,
 );
