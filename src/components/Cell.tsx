@@ -34,18 +34,11 @@ function Cell(props: any) {
   }, []);
 
   const handleCellChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let colIdx: number = col.positionIndex;
-    let rowIdx: number = row.positionIndex;
+    if ((e.target.value as string) === yMap.get(cellId)) return;
 
-    if ((e.target.value as string) === yMap.get(cellId)) {
-      return;
-      /*  if (!yMap.has(cellId))
-        //if ymap doesn't have that key. Can map and ycols/yrows diverge? */
-    }
     yMap.set(cellId, e.target.value as string);
 
     let keepId: RemoveKeepOperationId = `c${yDoc.clientID as number}.${1 as number}`;
-    let arrayRefOfColKeep: RemoveKeepOperationId[] = yColKeep.get;
     console.log(`keepId: ${keepId}, colId: ${col.id}, yColKeep: ${yColKeep}`);
     yColKeep.set(col.id, [keepId]);
     yRowKeep.set(row.id, [keepId]);
