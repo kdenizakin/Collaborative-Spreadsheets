@@ -41,33 +41,28 @@ function Cell(props: any) {
             let cellFinalContent: string = ""; //when all the concurrent operations are appended to each other (if they exist).
 
             if (yMap.get(cellId).length > 1) {
-              console.log("observer");
-              console.log(yMap.get(cellId));
               //if there are concurrent operations.
               for (
                 let i = 0;
                 i < yMap.get(cellId).length &&
                 yDoc.clientID !== yMap.get(cellId)[i];
                 i++
-              ) {
+              )
                 cellFinalContent += yMap.get(cellId)[i].content;
-              }
+
               setContent(cellFinalContent as string);
               const firstId = yMap.get(cellId)[0].id;
               yMap.set(cellId, [{ id: firstId, content: cellFinalContent }]);
             } else if (yMap.get(cellId).length == 1) {
               //if there are no concurrent operations
-              console.log("hereeee1");
               setContent(yMap.get(key)[0].content);
             }
           } else if (
             change.action === "add" &&
             cellId === key &&
             yMap.get(key).length === 1
-          ) {
-            console.log("here2");
+          )
             setContent(yMap.get(key)[0].content);
-          }
         },
       );
     };
