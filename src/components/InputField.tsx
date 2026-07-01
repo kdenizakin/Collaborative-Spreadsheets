@@ -1,4 +1,9 @@
 function InputField(props: any) {
+  const onTodoChange = (value) => {
+    props.setState({
+      name: value,
+    });
+  };
   return (
     <>
       <div className="grid">
@@ -7,8 +12,9 @@ function InputField(props: any) {
             data-testid="cell-input"
             className="input-field"
             type="text"
-            defaultValue={props.cellContent}
+            value={props.cellContent}
             onBlur={props.handleChange}
+            onChange={(e) => props.handleChange(e)}
           ></input>
         </div>
       </div>
