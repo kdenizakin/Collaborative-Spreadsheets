@@ -98,7 +98,6 @@ function Cell(props: any) {
     <>
       <div className="grid">
         <div className="col-12 md:col-6 lg:col-12">
-          <p>row id: {props.row.id}</p>
           <InputField cellContent={content} handleChange={handleCellChange} />
         </div>
       </div>

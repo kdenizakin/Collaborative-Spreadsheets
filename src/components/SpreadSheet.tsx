@@ -16,10 +16,6 @@ type CellId = {
   rowId: string;
   colIdxrowId: string;
 };
-type CellUpdateWinsType = {
-  id: string;
-  content: string;
-};
 //---------------------------------------------------------------
 
 function SpreadSheet(props: any) {
@@ -33,7 +29,6 @@ function SpreadSheet(props: any) {
     yColKeep,
     yRowKeep,
     undoMap,
-    wsProvider,
   } = props; //yjs Structures
 
   //-----------------------------React States-----------------------------
@@ -323,7 +318,6 @@ function SpreadSheet(props: any) {
                   header={
                     <div data-testid="column-header">
                       <ColumnHeader
-                        columnId={columnData.id}
                         column={columnData}
                         generateRandomUid={generateRandomUid}
                         addColumn={addColumn}
