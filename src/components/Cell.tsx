@@ -47,7 +47,7 @@ function Cell(props: any) {
 
             let cellFinalContent: string = appendConcurrentUpdates();
             setContent(cellFinalContent as string);
-            yMap.set(cellId, []);
+
             yMap.set(cellId, [
               { id: yMap.get(cellId)[0].id, content: cellFinalContent },
             ]);
