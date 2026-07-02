@@ -8,7 +8,6 @@ function InputField(props: any) {
             className="input-field"
             type="text"
             value={props.cellContent}
-            onBlur={props.handleChange}
             onChange={(e) => props.handleChange(e)}
           ></input>
         </div>

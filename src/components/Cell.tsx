@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import InputField from "./InputField";
-import { nanoid as uuidv4 } from "nanoid";
 
 type RemoveKeepOperationId = `c${number}.${number}`;
+
+//this array will be responsible from the update-wins semantics of the cell.
+//Foe example, when two concurrent updates are made for the same cell, this array will store both updates and display content accordingly.
+//If there are update and delete operations done concurrently, then update operations will win.
 type CellUpdateWinsType = {
   id: string;
   content: string;
@@ -12,9 +15,7 @@ function Cell(props: any) {
   const { row, col, yDoc, yMap, yColKeep, yRowKeep } = props;
   let cellId: string = `${col.id},${row.id}`;
 
-  const cell_update_wins: CellUpdateWinsType[] = []; //this array will be responsible from the update-wins semantics of the cell.
-  //Foe example, when two concurrent updates are made for the same cell, this array will store both updates and display content accordingly.
-  //If there are update and delete operations done concurrently, then update operations will win.
+  const cell_update_wins: CellUpdateWinsType[] = [];
 
   const getInitialContent = () => {
     const cellData: CellUpdateWinsType[] = props.yMap.get(cellId);
@@ -29,34 +30,28 @@ function Cell(props: any) {
       yMapEvent.changes.keys.forEach(
         (change: { action: string; oldValue: any }, key: any) => {
           if (change.action === "update" && cellId === key) {
-            if (yMap.get(cellId) === undefined) return;
-            if (
-              change.oldValue[0].id !== yMap.get(cellId)[0].id &&
-              change.oldValue[0].id !==
-                yMap.get(cellId)[yMap.get(cellId).length - 1].id
-            ) {
-              //means there are concurrent cell updates
-              yMap.get(cellId).push(change.oldValue[0]);
-            }
-            let cellFinalContent: string = ""; //when all the concurrent operations are appended to each other (if they exist).
+            if (yMap.get(cellId).length === 0) return;
 
-            if (yMap.get(cellId).length > 1) {
-              //if there are concurrent operations.
-              for (
-                let i = 0;
-                i < yMap.get(cellId).length &&
-                yDoc.clientID !== yMap.get(cellId)[i];
-                i++
+            for (let i = 0; i < yMap.get(cellId).length; i++)
+              if (
+                change.oldValue[0] !== undefined &&
+                change.oldValue[0].id !== yMap.get(cellId)[i].id
               )
-                cellFinalContent += yMap.get(cellId)[i].content;
+                //check all the local yMap update wins set entries and compare with the remote changes. If id's of these operations differ then these are concurrent.
+                yMap.get(cellId).push(change.oldValue[0]);
 
-              setContent(cellFinalContent as string);
-              const firstId = yMap.get(cellId)[0].id;
-              yMap.set(cellId, [{ id: firstId, content: cellFinalContent }]);
-            } else if (yMap.get(cellId).length == 1) {
+            if (yMap.get(cellId).length == 1) {
               //if there are no concurrent operations
-              setContent(yMap.get(key)[0].content);
+              setContent(yMap.get(cellId)[0].content);
+              return;
             }
+
+            let cellFinalContent: string = appendConcurrentUpdates();
+            setContent(cellFinalContent as string);
+
+            const firstId = yMap.get(cellId)[0].id;
+            yMap.set(cellId, []);
+            yMap.set(cellId, [{ id: firstId, content: cellFinalContent }]);
           } else if (
             change.action === "add" &&
             cellId === key &&
@@ -73,36 +68,32 @@ function Cell(props: any) {
   }, [yMap]);
 
   const handleCellChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if ((e.target.value as string) === (yMap.get(cellId)[0].content as string))
+    if (
+      yMap.get(cellId).length > 0 &&
+      (e.target.value as string) === (yMap.get(cellId)[0].content as string)
+    )
       return;
 
-    let updateWinsSet: CellUpdateWinsType[] =
-      yMap.get(cellId).length === 0
-        ? []
-        : (yMap.get(cellId) as CellUpdateWinsType[]);
-
-    updateWinsSet = deleteSeenEntries(updateWinsSet);
-    updateWinsSet = [{ id: yDoc.clientID, content: e.target.value }];
-    yMap.set(cellId, updateWinsSet);
+    yMap.set(cellId, []);
+    yMap.set(cellId, [{ id: yDoc.clientID, content: e.target.value }]);
 
     let keepId: RemoveKeepOperationId = `c${yDoc.clientID as number}.${1 as number}`;
-    let arrayRefOfColKeep: RemoveKeepOperationId[] = yColKeep.get;
-    //console.log(`keepId: ${keepId}, colId: ${col.id}, yColKeep: ${yColKeep}`);
     yColKeep.set(col.id, [keepId]);
     yRowKeep.set(row.id, [keepId]);
   };
 
-  //this function applies update-wins semantcis. It deletes seen entries from the cell content. It cannot delete an entry (concurrent for example)
-  //if it does see the id. With this way concurrent updates of the cell content are preserved.
-  let deleteSeenEntries = (
-    updateWinsArray: CellUpdateWinsType[],
-  ): CellUpdateWinsType[] => {
-    let length: number = updateWinsArray.length;
-    for (let i = 0; i < length; i++) {
-      //in the mean time there might be a concurrent operation. However, they are also preserved with this approach.
-      updateWinsArray = [...updateWinsArray.slice(1)] as CellUpdateWinsType[];
-    }
-    return updateWinsArray;
+  const appendConcurrentUpdates = (): string => {
+    let cellFinalContent: string = ""; //when all the concurrent operations are appended to each other (if they exist).
+    //yMap.get(cellId).length > 1 returns true if there are concurrent operations.
+    for (
+      let i = 0;
+      i < yMap.get(cellId).length &&
+      yDoc.clientID !== yMap.get(cellId)[i] &&
+      yMap.get(cellId).length > 1;
+      i++
+    )
+      cellFinalContent += yMap.get(cellId)[i].content;
+    return cellFinalContent;
   };
 
   return (
@@ -111,7 +102,6 @@ function Cell(props: any) {
         <div className="col-12 md:col-6 lg:col-12">
           <p>row id: {props.row.id}</p>
           <InputField cellContent={content} handleChange={handleCellChange} />
-          {content}
         </div>
       </div>
     </>
