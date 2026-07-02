@@ -15,8 +15,6 @@ function Cell(props: any) {
   const { row, col, yDoc, yMap, yColKeep, yRowKeep } = props;
   let cellId: string = `${col.id},${row.id}`;
 
-  const cell_update_wins: CellUpdateWinsType[] = [];
-
   const getInitialContent = () => {
     const cellData: CellUpdateWinsType[] = props.yMap.get(cellId);
     if (cellData === undefined || cellData[0] === undefined) return "";

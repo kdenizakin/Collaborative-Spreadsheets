@@ -131,7 +131,7 @@ function SpreadSheet(props: any) {
   useEffect(() => {
     yColKeep.observe((event: any) => {
       if (event.transaction.origin) {
-        yColKeep.forEach((_, key: string) => {
+        yColKeep.forEach((_: any, key: string) => {
           if (yColumns.toArray().indexOf(key) < 0) {
             undoColumns.undo();
             undoMap.undo();
@@ -143,7 +143,7 @@ function SpreadSheet(props: any) {
 
     yRowKeep.observe((event: any) => {
       if (event.transaction.origin) {
-        yRowKeep.forEach((_, key: string) => {
+        yRowKeep.forEach((_: any, key: string) => {
           if (yRows.toArray().indexOf(key) < 0) {
             undoRows.undo();
             undoMap.undo();
@@ -155,14 +155,14 @@ function SpreadSheet(props: any) {
 
     // Undo manager listeners. Filter out insertions, since they do not need to be undone.
     undoColumns.on("stack-item-added", () => {
-      undoColumns.undoStack.forEach((item, index) => {
+      undoColumns.undoStack.forEach((item: any, index: any) => {
         if (item.insertions.clients.size > 0)
           undoColumns.undoStack.splice(index, 1);
       });
     });
 
     undoRows.on("stack-item-added", () => {
-      undoRows.undoStack.forEach((item, index) => {
+      undoRows.undoStack.forEach((item: any, index: any) => {
         if (item.insertions.clients.size > 0)
           undoRows.undoStack.splice(index, 1);
       });
