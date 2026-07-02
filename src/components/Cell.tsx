@@ -30,7 +30,8 @@ function Cell(props: any) {
           if (change.action === "update" && cellId === key) {
             if (yMap.get(cellId).length === 0) return;
 
-            for (let i = 0; i < yMap.get(cellId).length; i++)
+            let length: number = yMap.get(cellId).length;
+            for (let i = 0; i < length; i++)
               if (
                 change.oldValue[0] !== undefined &&
                 change.oldValue[0].id !== yMap.get(cellId)[i].id
@@ -46,10 +47,10 @@ function Cell(props: any) {
 
             let cellFinalContent: string = appendConcurrentUpdates();
             setContent(cellFinalContent as string);
-
-            const firstId = yMap.get(cellId)[0].id;
             yMap.set(cellId, []);
-            yMap.set(cellId, [{ id: firstId, content: cellFinalContent }]);
+            yMap.set(cellId, [
+              { id: yMap.get(cellId)[0].id, content: cellFinalContent },
+            ]);
           } else if (
             change.action === "add" &&
             cellId === key &&
