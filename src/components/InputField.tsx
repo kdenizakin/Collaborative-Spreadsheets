@@ -1,4 +1,7 @@
 function InputField(props: any) {
+  const handleCellChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    props.setContent(e.target.value);
+  };
   return (
     <>
       <div className="grid">
@@ -8,7 +11,10 @@ function InputField(props: any) {
             className="input-field"
             type="text"
             value={props.cellContent}
-            onChange={(e) => props.handleChange(e)}
+            onChange={(e) => {
+              handleCellChange(e);
+            }}
+            onBlur={(e) => props.handleYjsChange(e)}
           ></input>
         </div>
       </div>

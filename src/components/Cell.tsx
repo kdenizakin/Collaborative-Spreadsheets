@@ -12,8 +12,11 @@ type CellUpdateWinsType = {
 };
 
 function Cell(props: any) {
-  const { row, col, yDoc, yMap, yColKeep, yRowKeep } = props;
+  const { row, col, yDoc, yMap, yColKeep, yRowKeep, FormulaParser } = props;
+
   let cellId: string = `${col.id},${row.id}`;
+  let rowIdx: number = row.positionIndex;
+  let colIdx: number = col.positionIndex;
 
   const getInitialContent = () => {
     const cellData: CellUpdateWinsType[] = props.yMap.get(cellId);
@@ -66,7 +69,7 @@ function Cell(props: any) {
     };
   }, [yMap]);
 
-  const handleCellChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleYjsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (
       yMap.get(cellId).length > 0 &&
       (e.target.value as string) === (yMap.get(cellId)[0].content as string)
@@ -99,7 +102,11 @@ function Cell(props: any) {
     <>
       <div className="grid">
         <div className="col-12 md:col-6 lg:col-12">
-          <InputField cellContent={content} handleChange={handleCellChange} />
+          <InputField
+            cellContent={content}
+            handleYjsChange={handleYjsChange}
+            setContent={setContent}
+          />
         </div>
       </div>
     </>
