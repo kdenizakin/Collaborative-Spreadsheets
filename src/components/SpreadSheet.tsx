@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, use } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import ColumnHeader from "./ColumnHeader.tsx";
@@ -7,6 +7,17 @@ import { Button } from "primereact/button";
 import { nanoid as uuidv4 } from "nanoid";
 import * as Y from "yjs";
 import SpreadSheetHeader from "./SpreadSheetHeader.tsx";
+import {
+  useYDocStore,
+  useYMapStore,
+  useYColumnsStore,
+  useYRowsStore,
+  useUndoYColumnsStore,
+  useUndoYRowsStore,
+  useUndoMapStore,
+  useYColKeepStore,
+  useYRowKeepStore,
+} from "../YjsStore";
 
 //-----------------------------Types-----------------------------
 type ColumnType = { id: string; positionIndex: number };
@@ -18,19 +29,19 @@ type CellId = {
 };
 //---------------------------------------------------------------
 
-function SpreadSheet(props: any) {
-  const {
-    yDoc,
-    yMap,
-    yColumns,
-    yRows,
-    undoColumns,
-    undoRows,
-    yColKeep,
-    yRowKeep,
-    undoMap,
-  } = props; //yjs Structures
+//-----------------------------Yjs States-----------------------------
+let yMap = useYMapStore.getState().yMap;
+let yColumns = useYColumnsStore.getState().yColumns;
+let yRows = useYRowsStore.getState().yRows;
+let undoColumns = useUndoYColumnsStore.getState().undoColumns;
+let undoRows = useUndoYRowsStore.getState().undoRows;
+let undoMap = useUndoMapStore.getState().undoMap;
+let yColKeep = useYColKeepStore.getState().yColKeep;
+let yRowKeep = useYRowKeepStore.getState().yRowKeep;
 
+//------------------------------------------------------------------------
+
+function SpreadSheet(props: any) {
   //-----------------------------React States-----------------------------
   const [columns, setColumns] = useState<ColumnType[]>([]);
   const [rows, setRows] = useState<RowType[]>([]);
@@ -38,6 +49,8 @@ function SpreadSheet(props: any) {
   const [rowPositionIndex, setRowPositionIndex] = useState<number>(0);
 
   //------------------------------------------------------------------------
+
+  const deleteMapEntry = useYMapStore((state) => state.deleteEntry);
 
   //-----------------------------YColumns/YRows Observers-----------------------------
   useEffect(() => {
@@ -55,9 +68,11 @@ function SpreadSheet(props: any) {
               increaseColumnPositionIndexes(index);
             }
           } else if (change.delete !== undefined) {
-            console.log(
-              `Property "${key}" was deleted. New value: "${yMap.get(key)}". Previous value: "".`,
-            );
+            /* console.log(
+              `Property "${key}" was deleted. New value: "${useYMapStore
+                .getState()
+                .yMap.get(key)}". Previous value: "".`,
+            ); */
           }
         },
       );
@@ -194,7 +209,7 @@ function SpreadSheet(props: any) {
     } else return;
 
     yColumns.insert(index, [newColId]);
-
+    let setYmapEntry = useYMapStore.getState().setEntry;
     for (let i = 0; i < yRows.length; i++) {
       let rowIdTemp: string = yRows.get(i) as string;
       let cellId: CellId = {
@@ -202,7 +217,7 @@ function SpreadSheet(props: any) {
         colId: newColId,
         colIdxrowId: `${newColId},${rowIdTemp}`,
       };
-      yMap.set(cellId.colIdxrowId, [{ id: "", content: "" }]);
+      setYmapEntry(cellId.colIdxrowId, [{ id: "", content: "" }]);
     }
   };
 
@@ -220,6 +235,8 @@ function SpreadSheet(props: any) {
     yRows.insert(index, [newRowId]);
 
     let ids: CellId[] = [];
+    const setYmapEntry = useYMapStore.getState().setEntry;
+
     for (let i = 0; i < yColumns.length; i++) {
       let colIdTemp: string = yColumns.get(i) as string;
       let cellId: CellId = {
@@ -228,7 +245,7 @@ function SpreadSheet(props: any) {
         colIdxrowId: `${colIdTemp},${newRowId}`,
       };
       ids.push(cellId);
-      yMap.set(cellId.colIdxrowId, [{ id: "", content: "" }]);
+      setYmapEntry(cellId.colIdxrowId, [{ id: "", content: "" }]);
     }
   };
 
@@ -256,6 +273,7 @@ function SpreadSheet(props: any) {
 
   function removeColumn(column: ColumnType): void {
     let index: number = column.positionIndex;
+
     const colId: string = yColumns.get(index) as string;
     if (yColKeep.has(colId)) {
       yColKeep.delete(colId);
@@ -266,20 +284,21 @@ function SpreadSheet(props: any) {
         let colIdTemp: string = column.id;
         let rowIdTemp: string = yRows.get(i);
         let cellIdTemp: string = `${colIdTemp},${rowIdTemp}`;
-        yMap.delete(cellIdTemp);
+        deleteMapEntry(cellIdTemp);
       }
     }
   }
 
   function removeRow(row: RowType): void {
     let index: number = row.positionIndex;
+
     if (yRows.get(index) !== undefined) {
       yRows.delete(index);
       for (let i = 0; i < yColumns.length; i++) {
         let colIdTemp: string = yColumns.get(i);
         let rowIdTemp: string = row.id;
         let cellIdTemp: string = `${colIdTemp},${rowIdTemp}`;
-        yMap.delete(cellIdTemp);
+        deleteMapEntry(cellIdTemp);
       }
     }
     const rowId: string = yRows.get(index) as string;
@@ -330,10 +349,6 @@ function SpreadSheet(props: any) {
                       key={`${columnData.id},${rowData.id}`}
                       row={rowData}
                       col={columnData}
-                      yDoc={yDoc}
-                      yMap={yMap}
-                      yColKeep={yColKeep}
-                      yRowKeep={yRowKeep}
                     />
                   )}
                 />
