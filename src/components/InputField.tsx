@@ -14,7 +14,7 @@ function InputField(props: any) {
             onChange={(e) => {
               handleCellChange(e);
             }}
-            onBlur={(e) => props.handleYjsChange(e)}
+            onBlur={(e) => props.handleFocusOut(e)}
           ></input>
         </div>
       </div>

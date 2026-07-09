@@ -7,6 +7,8 @@ import { Button } from "primereact/button";
 import { nanoid as uuidv4 } from "nanoid";
 import * as Y from "yjs";
 import SpreadSheetHeader from "./SpreadSheetHeader.tsx";
+import { parser } from "../formula";
+import { create } from "zustand";
 import {
   useYDocStore,
   useYMapStore,
@@ -51,6 +53,29 @@ function SpreadSheet(props: any) {
   //------------------------------------------------------------------------
 
   const deleteMapEntry = useYMapStore((state) => state.deleteEntry);
+
+  //---------------------------Formulas-------------------------------------
+  const position = { row: 1, col: 1, sheet: "spreadsheet" };
+
+  // parse the formula, the position of where the formula is located is required
+  // for some functions.
+  console.log("formula testing:");
+  console.log(parser.parse("PRODUCT(A1:B3)", position));
+
+  // you can specify if the return value can be an array, this is helpful when dealing
+  // with an array formula
+  console.log(parser.parse("MMULT({1,5;2,3},{1,2;2,3})", position, true));
+  // print [ [ 11, 17 ], [ 8, 13 ] ]
+
+  const handleFormula = (
+    completeFormula: string,
+    position: { row: number; col: number; sheetName: string },
+  ): number => {
+    return parser.parse(completeFormula, position, true);
+  };
+  const spreadsheet = useSpreadsheetStore((state) => state.rows);
+  console.log(spreadsheet);
+  //----------------------------------------------------------------------
 
   //-----------------------------YColumns/YRows Observers-----------------------------
   useEffect(() => {
@@ -349,6 +374,7 @@ function SpreadSheet(props: any) {
                       key={`${columnData.id},${rowData.id}`}
                       row={rowData}
                       col={columnData}
+                      handleFormula={handleFormula}
                     />
                   )}
                 />

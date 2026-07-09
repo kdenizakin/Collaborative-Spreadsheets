@@ -101,8 +101,20 @@ function Cell(props: any) {
     };
   }, [useYMapStore.getState()]);
 
-  const handleYjsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFocusOut = (e: React.ChangeEvent<HTMLInputElement>) => {
     const setYmapEntry = useYMapStore.getState().setEntry;
+    //we should first check if the given text is a formula or not.
+    const formulaPattern = /[A-Z]+\([A-Z*][0-9]+:[A-Z*][0-9]+\)/;
+    const isValidFormula = formulaPattern.test(e.target.value as string);
+    console.log(isValidFormula);
+    if (isValidFormula) {
+      console.log(`formula qualified ${e.target.value}`);
+      handleFormula(e.target.value as string, {
+        row: rowIdx,
+        col: colIdx,
+        sheetName: "spreadsheet",
+      });
+    }
     if (
       yMap.get(cellId).length > 0 &&
       (e.target.value as string) === (yMap.get(cellId)[0].content as string)
@@ -137,7 +149,7 @@ function Cell(props: any) {
         <div className="col-12 md:col-6 lg:col-12">
           <InputField
             cellContent={content}
-            handleYjsChange={handleYjsChange}
+            handleFocusOut={handleFocusOut}
             setContent={setContent}
           />
         </div>
