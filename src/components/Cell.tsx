@@ -1,5 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import InputField from "./InputField";
+import {
+  useYDocStore,
+  useYMapStore,
+  useYColumnsStore,
+  useYRowsStore,
+  useUndoYColumnsStore,
+  useUndoYRowsStore,
+  useUndoMapStore,
+  useYColKeepStore,
+  useYRowKeepStore,
+} from "../YjsStore";
 
 type RemoveKeepOperationId = `c${number}.${number}`;
 
@@ -12,14 +23,29 @@ type CellUpdateWinsType = {
 };
 
 function Cell(props: any) {
-  const { row, col, yDoc, yMap, yColKeep, yRowKeep, FormulaParser } = props;
+  const { row, col } = props;
+
+  //-----------------------------Yjs States-----------------------------
+  const YDoc = useYDocStore.getState().YDoc;
+  const yMap = useYMapStore.getState().yMap;
+  const yColumns = useYColumnsStore.getState().yColumns;
+  const yRows = useYRowsStore.getState().yRows;
+  const undoColumns = useUndoYColumnsStore.getState().undoColumns;
+  const undoRows = useUndoYRowsStore.getState().undoRows;
+  const undoMap = useUndoMapStore.getState().undoMap;
+  const yColKeep = useYColKeepStore.getState().yColKeep;
+  const yRowKeep = useYRowKeepStore.getState().yRowKeep;
+
+  //------------------------------------------------------------------------
 
   let cellId: string = `${col.id},${row.id}`;
   let rowIdx: number = row.positionIndex;
   let colIdx: number = col.positionIndex;
 
   const getInitialContent = () => {
-    const cellData: CellUpdateWinsType[] = props.yMap.get(cellId);
+    let cellData: CellUpdateWinsType[] = [];
+    if (useYMapStore.getState().yMap !== undefined)
+      cellData = useYMapStore.getState().yMap.get(cellId);
     if (cellData === undefined || cellData[0] === undefined) return "";
     return cellData[0].content;
   };
@@ -27,6 +53,8 @@ function Cell(props: any) {
   const [content, setContent] = useState<string>(getInitialContent());
 
   useEffect(() => {
+    const setYmapEntry = useYMapStore.getState().setEntry;
+
     const observer = (yMapEvent: any) => {
       yMapEvent.changes.keys.forEach(
         (change: { action: string; oldValue: any }, key: any) => {
@@ -38,9 +66,11 @@ function Cell(props: any) {
               if (
                 change.oldValue[0] !== undefined &&
                 change.oldValue[0].id !== yMap.get(cellId)[i].id
-              )
+              ) {
+                //only enters here if there are concurrent operations on the same cell.
                 //check all the local yMap update wins set entries and compare with the remote changes. If id's of these operations differ then these are concurrent.
                 yMap.get(cellId).push(change.oldValue[0]);
+              }
 
             if (yMap.get(cellId).length == 1) {
               //if there are no concurrent operations
@@ -50,9 +80,11 @@ function Cell(props: any) {
 
             let cellFinalContent: string = appendConcurrentUpdates();
             setContent(cellFinalContent as string);
-
-            yMap.set(cellId, [
-              { id: yMap.get(cellId)[0].id, content: cellFinalContent },
+            setYmapEntry(cellId, [
+              {
+                id: yMap.get(cellId)[0].id,
+                content: cellFinalContent,
+              },
             ]);
           } else if (
             change.action === "add" &&
@@ -67,19 +99,20 @@ function Cell(props: any) {
     return () => {
       yMap.unobserve(observer);
     };
-  }, [yMap]);
+  }, [useYMapStore.getState()]);
 
   const handleYjsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const setYmapEntry = useYMapStore.getState().setEntry;
     if (
       yMap.get(cellId).length > 0 &&
       (e.target.value as string) === (yMap.get(cellId)[0].content as string)
     )
       return;
 
-    yMap.set(cellId, []);
-    yMap.set(cellId, [{ id: yDoc.clientID, content: e.target.value }]);
+    setYmapEntry(cellId, []);
+    setYmapEntry(cellId, [{ id: YDoc.clientID, content: e.target.value }]);
 
-    let keepId: RemoveKeepOperationId = `c${yDoc.clientID as number}.${1 as number}`;
+    let keepId: RemoveKeepOperationId = `c${YDoc.clientID as number}.${1 as number}`;
     yColKeep.set(col.id, [keepId]);
     yRowKeep.set(row.id, [keepId]);
   };
@@ -90,7 +123,7 @@ function Cell(props: any) {
     for (
       let i = 0;
       i < yMap.get(cellId).length &&
-      yDoc.clientID !== yMap.get(cellId)[i] &&
+      YDoc.clientID !== yMap.get(cellId)[i] &&
       yMap.get(cellId).length > 1;
       i++
     )

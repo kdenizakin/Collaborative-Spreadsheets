@@ -4,28 +4,38 @@ import "primeicons/primeicons.css";
 import * as Y from "yjs";
 import SpreadSheet from "./components/SpreadSheet.tsx";
 import { WebsocketProvider } from "y-websocket";
-import { useState } from "react";
-
-//-----------------------------Yjs Structures-----------------------------
-const yDoc = new Y.Doc();
-const yMap = yDoc.getMap("spreadsheet");
-const yColumns: Y.Array<unknown> = yDoc.getArray("columns");
-const yRows = yDoc.getArray("rows");
-const undoColumns = new Y.UndoManager(yColumns);
-const undoRows = new Y.UndoManager(yRows);
-const undoMap = new Y.UndoManager(yMap);
-const yColKeep = yDoc.getMap("column-keep");
-const yRowKeep = yDoc.getMap("row-keep");
-//------------------------------------------------------------------------
-
-const wsProvider = new WebsocketProvider(
-  "ws://localhost:1236",
-  "my-roomname",
-  yDoc,
-);
+import { useEffect, useState } from "react";
+import { useYDocStore, useYMapStore } from "./YjsStore.ts";
+import { setSelection } from "@testing-library/user-event/dist/cjs/event/selection/setSelection.js";
 
 function App() {
   let [isConnected, setIsConnected] = useState<boolean>(false);
+  const yDoc = useYDocStore.getState().YDoc;
+
+  const [wsProvider, setWsProvider] = useState<WebsocketProvider | null>(null);
+
+  useEffect(() => {
+    const wsProvider = new WebsocketProvider(
+      "ws://localhost:1236",
+      "my-roomname",
+      yDoc,
+    );
+    setWsProvider(wsProvider);
+
+    const handleStatus = (event: {
+      status: "connected" | "disconnected" | "connecting";
+    }) => {
+      console.log(event.status);
+      setIsConnected(event.status === "connected");
+    };
+
+    wsProvider.on("status", handleStatus);
+
+    return () => {
+      wsProvider.off("status", handleStatus);
+      wsProvider.destroy();
+    };
+  }, [yDoc]);
 
   const closeWsConnection = () => {
     wsProvider.disconnect();
@@ -41,14 +51,6 @@ function App() {
     }
   };
 
-  wsProvider.on(
-    "status",
-    (event: { status: "connected" | "disconnected" | "connecting" }) => {
-      console.log(event.status);
-      if (event.status === "connected") setIsConnected(true);
-    },
-  );
-
   return (
     <>
       <SpreadSheet
@@ -58,14 +60,6 @@ function App() {
         closeWsConnection={closeWsConnection}
         reopenWsConnection={reopenWsConnection}
         yDoc={yDoc}
-        yMap={yMap}
-        yColumns={yColumns}
-        yRows={yRows}
-        yColKeep={yColKeep}
-        yRowKeep={yRowKeep}
-        undoColumns={undoColumns}
-        undoRows={undoRows}
-        undoMap={undoMap}
       />
     </>
   );
