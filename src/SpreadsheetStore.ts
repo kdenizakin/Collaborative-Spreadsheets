@@ -5,7 +5,7 @@ type SpreadSheetStore = {
   returnSpreadsheet: () => [];
 };
 
-const spreadsheetStore = create<SpreadSheetStore>((set) => ({
+const useSpreadsheetStore = create<SpreadSheetStore>((set) => ({
   //this is a "zustand" implementation to fetch the spreadsheet data. Less implementation needed and simpler compared to Redux and this is not a global state rather for components which want to use it.
   // This data is fetched by "formula.tsx" to make calculations.
   rows: [],
@@ -29,3 +29,5 @@ const spreadsheetStore = create<SpreadSheetStore>((set) => ({
     });
   },
 }));
+
+export { useSpreadsheetStore };

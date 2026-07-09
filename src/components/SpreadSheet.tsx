@@ -7,8 +7,10 @@ import { Button } from "primereact/button";
 import { nanoid as uuidv4 } from "nanoid";
 import * as Y from "yjs";
 import SpreadSheetHeader from "./SpreadSheetHeader.tsx";
-import { parser } from "../formula";
+import { parser } from "../formula.ts";
 import { create } from "zustand";
+import { useSpreadsheetStore } from "../SpreadsheetStore.ts";
+
 import {
   useYDocStore,
   useYMapStore,
@@ -32,7 +34,6 @@ type CellId = {
 //---------------------------------------------------------------
 
 //-----------------------------Yjs States-----------------------------
-let yMap = useYMapStore.getState().yMap;
 let yColumns = useYColumnsStore.getState().yColumns;
 let yRows = useYRowsStore.getState().yRows;
 let undoColumns = useUndoYColumnsStore.getState().undoColumns;
@@ -53,6 +54,8 @@ function SpreadSheet(props: any) {
   //------------------------------------------------------------------------
 
   const deleteMapEntry = useYMapStore((state) => state.deleteEntry);
+  const spreadsheet = useSpreadsheetStore((state) => state.rows);
+  console.log(spreadsheet);
 
   //---------------------------Formulas-------------------------------------
   const position = { row: 1, col: 1, sheet: "spreadsheet" };
@@ -73,8 +76,6 @@ function SpreadSheet(props: any) {
   ): number => {
     return parser.parse(completeFormula, position, true);
   };
-  const spreadsheet = useSpreadsheetStore((state) => state.rows);
-  console.log(spreadsheet);
   //----------------------------------------------------------------------
 
   //-----------------------------YColumns/YRows Observers-----------------------------

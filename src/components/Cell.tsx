@@ -23,7 +23,7 @@ type CellUpdateWinsType = {
 };
 
 function Cell(props: any) {
-  const { row, col } = props;
+  const { row, col, handleFormula } = props;
 
   //-----------------------------Yjs States-----------------------------
   const YDoc = useYDocStore.getState().YDoc;
@@ -106,7 +106,6 @@ function Cell(props: any) {
     //we should first check if the given text is a formula or not.
     const formulaPattern = /[A-Z]+\([A-Z*][0-9]+:[A-Z*][0-9]+\)/;
     const isValidFormula = formulaPattern.test(e.target.value as string);
-    console.log(isValidFormula);
     if (isValidFormula) {
       console.log(`formula qualified ${e.target.value}`);
       handleFormula(e.target.value as string, {
