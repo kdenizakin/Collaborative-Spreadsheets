@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, use } from "react";
+import { useState, useEffect } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import ColumnHeader from "./ColumnHeader.tsx";
@@ -7,12 +7,10 @@ import { Button } from "primereact/button";
 import { nanoid as uuidv4 } from "nanoid";
 import * as Y from "yjs";
 import SpreadSheetHeader from "./SpreadSheetHeader.tsx";
-import { parser } from "../formula.ts";
-import { create } from "zustand";
+import { parserDriver } from "../formula.ts";
 import { useSpreadsheetStore } from "../SpreadsheetStore.ts";
 
 import {
-  useYDocStore,
   useYMapStore,
   useYColumnsStore,
   useYRowsStore,
@@ -54,27 +52,29 @@ function SpreadSheet(props: any) {
   //------------------------------------------------------------------------
 
   const deleteMapEntry = useYMapStore((state) => state.deleteEntry);
-  const spreadsheet = useSpreadsheetStore((state) => state.rows);
-  console.log(spreadsheet);
+  const returnSpreadsheet = useSpreadsheetStore(
+    (state) => state.fetchSpreadsheet,
+  );
 
   //---------------------------Formulas-------------------------------------
-  const position = { row: 1, col: 1, sheet: "spreadsheet" };
+  //const position = { row: 1, col: 1, sheet: "spreadsheet" };
 
   // parse the formula, the position of where the formula is located is required
   // for some functions.
-  console.log("formula testing:");
-  console.log(parser.parse("PRODUCT(A1:B3)", position));
+  /* console.log("formula testing:");
+  console.log(parser.parse("PRODUCT(A1:B3)", position)); */
 
   // you can specify if the return value can be an array, this is helpful when dealing
   // with an array formula
-  console.log(parser.parse("MMULT({1,5;2,3},{1,2;2,3})", position, true));
+  //console.log(parser.parse("MMULT({1,5;2,3},{1,2;2,3})", position, true));
   // print [ [ 11, 17 ], [ 8, 13 ] ]
 
   const handleFormula = (
     completeFormula: string,
     position: { row: number; col: number; sheetName: string },
-  ): number => {
-    return parser.parse(completeFormula, position, true);
+  ): void => {
+    let spreadsheetData: string[][] = returnSpreadsheet();
+    return parserDriver(spreadsheetData, completeFormula, position);
   };
   //----------------------------------------------------------------------
 

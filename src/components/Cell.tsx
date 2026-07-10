@@ -1,13 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import InputField from "./InputField";
 import {
   useYDocStore,
   useYMapStore,
-  useYColumnsStore,
-  useYRowsStore,
-  useUndoYColumnsStore,
-  useUndoYRowsStore,
-  useUndoMapStore,
   useYColKeepStore,
   useYRowKeepStore,
 } from "../YjsStore";
@@ -28,11 +23,6 @@ function Cell(props: any) {
   //-----------------------------Yjs States-----------------------------
   const YDoc = useYDocStore.getState().YDoc;
   const yMap = useYMapStore.getState().yMap;
-  const yColumns = useYColumnsStore.getState().yColumns;
-  const yRows = useYRowsStore.getState().yRows;
-  const undoColumns = useUndoYColumnsStore.getState().undoColumns;
-  const undoRows = useUndoYRowsStore.getState().undoRows;
-  const undoMap = useUndoMapStore.getState().undoMap;
   const yColKeep = useYColKeepStore.getState().yColKeep;
   const yRowKeep = useYRowKeepStore.getState().yRowKeep;
 
@@ -103,25 +93,27 @@ function Cell(props: any) {
 
   const handleFocusOut = (e: React.ChangeEvent<HTMLInputElement>) => {
     const setYmapEntry = useYMapStore.getState().setEntry;
-    //we should first check if the given text is a formula or not.
-    const formulaPattern = /[A-Z]+\([A-Z*][0-9]+:[A-Z*][0-9]+\)/;
+    const formulaPattern = /[A-Z]+\([A-Z*][0-9]+:[A-Z*][0-9]+\)/; //we should first check if the given text is a formula or not.
     const isValidFormula = formulaPattern.test(e.target.value as string);
+    let finalCellContent: string = e.target.value;
+
     if (isValidFormula) {
       console.log(`formula qualified ${e.target.value}`);
-      handleFormula(e.target.value as string, {
+      let formulaResult: number = handleFormula(e.target.value as string, {
         row: rowIdx,
         col: colIdx,
         sheetName: "spreadsheet",
       });
+      finalCellContent = String(formulaResult);
+      console.log(`formulaResult: ${finalCellContent}`);
+      setYmapEntry(cellId, []);
+      setYmapEntry(cellId, [{ id: YDoc.clientID, content: finalCellContent }]);
     }
-    if (
-      yMap.get(cellId).length > 0 &&
-      (e.target.value as string) === (yMap.get(cellId)[0].content as string)
-    )
+    if ((e.target.value as string) === (yMap.get(cellId)[0].content as string))
       return;
 
     setYmapEntry(cellId, []);
-    setYmapEntry(cellId, [{ id: YDoc.clientID, content: e.target.value }]);
+    setYmapEntry(cellId, [{ id: YDoc.clientID, content: finalCellContent }]);
 
     let keepId: RemoveKeepOperationId = `c${YDoc.clientID as number}.${1 as number}`;
     yColKeep.set(col.id, [keepId]);

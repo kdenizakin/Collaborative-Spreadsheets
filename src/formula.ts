@@ -3,11 +3,33 @@ const FormulaParser = require("fast-formula-parser");
 const { FormulaHelpers, Types, FormulaError, MAX_ROW, MAX_COLUMN } =
   FormulaParser;
 
-const data = [
+/* const data = [
   // A  B  C
   [1, 2, 3], // row 1
   [4, 5, 6], // row 2
-];
+]; */
+
+let data: any[][] = [];
+
+const parserDriver = (
+  spreadsheetData: string[][],
+  formula: string,
+  position,
+) => {
+  data = spreadsheetData;
+  let rowLength: number = data.length;
+  let colLenght: number = data[0].length;
+  for (let i = 0; i < colLenght; i++) {
+    for (let j = 0; j < rowLength; j++) {
+      console.log(`data[i][j]: ${Number.isNaN(Number(data[i][j]))}`);
+      if (!Number.isNaN(Number(data[i][j]))) {
+        data[i][j] = Number(data[i][j]);
+      } else data[i][j] = "";
+    }
+  }
+  console.log(data);
+  return parser.parse(formula, position, true);
+};
 
 const parser = new FormulaParser({
   // Variable used in formulas (defined name)
@@ -59,4 +81,4 @@ const parser = new FormulaParser({
   },
 });
 
-export { parser };
+export { parserDriver };

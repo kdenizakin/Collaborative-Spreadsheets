@@ -34,7 +34,6 @@ type YRowKeepType = {
   yRowKeep: any;
 };
 
-// Generic tipi <YDocState> olarak vererek 'unknown' hatasını çözersiniz
 const useYDocStore = create<YDocType>((set) => ({
   documentId: "",
   YDoc: new Y.Doc(),
@@ -45,7 +44,6 @@ const useYMapStore = create<YMapType>((set, get) => ({
   yMap: useYDocStore.getState().YDoc.getMap("spreadsheet"),
 
   setEntry: (cellId: string, content: string) => {
-    // 1. Get the current map
     const { yMap } = get();
     yMap.set(cellId, content);
     set({ yMap });
