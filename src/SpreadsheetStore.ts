@@ -17,7 +17,7 @@ const returnSpreadsheet = () => {
     let currentRow: string[] = [];
     for (let j = 0; j < yColumns.length; j++) {
       let cellId: string = `${yColumns.get(j)},${yRows.get(i)}`;
-      let cellData = yMap.get(cellId)[0];
+      let cellData = yMap.get(cellId)![0];
       let content = cellData ? cellData.content : "";
       currentRow.push(content);
     }

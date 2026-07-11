@@ -39,7 +39,6 @@ let undoRows = useUndoYRowsStore.getState().undoRows;
 let undoMap = useUndoMapStore.getState().undoMap;
 let yColKeep = useYColKeepStore.getState().yColKeep;
 let yRowKeep = useYRowKeepStore.getState().yRowKeep;
-
 //------------------------------------------------------------------------
 
 function SpreadSheet(props: any) {
@@ -85,7 +84,7 @@ function SpreadSheet(props: any) {
         (change: { insert: string; delete?: any }, key: any) => {
           if (change.insert !== undefined) {
             for (let j: number = 0; j < change.insert.length; j++) {
-              let index: number = findYElement(change.insert[j], yColumns);
+              let index: number = findYArrayElement(change.insert[j], yColumns);
               setColumns((columns) => [
                 ...columns.slice(0, index),
                 { id: change.insert[j], positionIndex: index - 1 },
@@ -129,7 +128,7 @@ function SpreadSheet(props: any) {
         (change: { insert: string; delete?: any }, key: any) => {
           if (change.insert !== undefined) {
             for (let i = 0; i < change.insert.length; i++) {
-              let index: number = findYElement(change.insert[i], yRows);
+              let index: number = findYArrayElement(change.insert[i], yRows);
               setRows((rows) => [
                 ...rows.slice(0, index),
                 {
@@ -211,10 +210,10 @@ function SpreadSheet(props: any) {
     return uuidv4(10);
   };
 
-  const findYElement = (id: string, yStructure: Y.Array<unknown>): number => {
+  const findYArrayElement = (id: string, yArray: Y.Array<string>): number => {
     let index: number = 0;
-    for (let i = 0; i < yStructure.length; i++) {
-      if (id === yStructure.get(i)) index = i;
+    for (let i = 0; i < yArray.length; i++) {
+      if (id === (yArray.get(i) as string)) index = i;
     }
     return index;
   };
@@ -243,7 +242,7 @@ function SpreadSheet(props: any) {
         colId: newColId,
         colIdxrowId: `${newColId},${rowIdTemp}`,
       };
-      setYmapEntry(cellId.colIdxrowId, [{ id: "", content: "" }]);
+      setYmapEntry(cellId.colIdxrowId, "");
     }
   };
 
@@ -271,7 +270,7 @@ function SpreadSheet(props: any) {
         colIdxrowId: `${colIdTemp},${newRowId}`,
       };
       ids.push(cellId);
-      setYmapEntry(cellId.colIdxrowId, [{ id: "", content: "" }]);
+      setYmapEntry(cellId.colIdxrowId, "");
     }
   };
 

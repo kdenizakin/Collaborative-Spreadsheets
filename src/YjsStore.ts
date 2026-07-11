@@ -7,31 +7,40 @@ type YDocType = {
   YDoc: any;
 };
 
+type CellType = {
+  id: string;
+  content: string;
+  formula?: string;
+};
+
 type YMapType = {
-  yMap: any;
+  yMap: Y.Map<CellType[]>;
   setEntry: Function;
   deleteEntry: Function;
 };
+
+type RemoveKeepOperationId = `c${number}.${number}`;
+
 type YColumnsType = {
-  yColumns: any;
+  yColumns: Y.Array<string>;
 };
 type YRowsType = {
-  yRows: any;
+  yRows: Y.Array<string>;
 };
 type UndoYColumnsType = {
-  undoColumns: any;
+  undoColumns: Y.UndoManager;
 };
 type UndoYRowsType = {
-  undoRows: any;
+  undoRows: Y.UndoManager;
 };
 type UndoYMapType = {
-  undoMap: any;
+  undoMap: Y.UndoManager;
 };
 type YColKeepType = {
-  yColKeep: any;
+  yColKeep: Y.Map<RemoveKeepOperationId[]>;
 };
 type YRowKeepType = {
-  yRowKeep: any;
+  yRowKeep: Y.Map<RemoveKeepOperationId[]>;
 };
 
 const useYDocStore = create<YDocType>((set) => ({
@@ -45,7 +54,12 @@ const useYMapStore = create<YMapType>((set, get) => ({
 
   setEntry: (cellId: string, content: string) => {
     const { yMap } = get();
-    yMap.set(cellId, content);
+    yMap.set(cellId, [
+      {
+        id: useYDocStore.getState().YDoc.clientID,
+        content: content as string,
+      },
+    ]);
     set({ yMap });
   },
 

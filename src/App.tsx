@@ -1,12 +1,10 @@
 import "./App.css";
 import "/node_modules/primeflex/primeflex.css";
 import "primeicons/primeicons.css";
-import * as Y from "yjs";
 import SpreadSheet from "./components/SpreadSheet.tsx";
 import { WebsocketProvider } from "y-websocket";
 import { useEffect, useState } from "react";
 import { useYDocStore, useYMapStore } from "./YjsStore.ts";
-import { setSelection } from "@testing-library/user-event/dist/cjs/event/selection/setSelection.js";
 
 function App() {
   let [isConnected, setIsConnected] = useState<boolean>(false);

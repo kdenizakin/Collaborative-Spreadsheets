@@ -12,9 +12,10 @@ type RemoveKeepOperationId = `c${number}.${number}`;
 //this array will be responsible from the update-wins semantics of the cell.
 //Foe example, when two concurrent updates are made for the same cell, this array will store both updates and display content accordingly.
 //If there are update and delete operations done concurrently, then update operations will win.
-type CellUpdateWinsType = {
+type CellType = {
   id: string;
   content: string;
+  formula?: string;
 };
 
 function Cell(props: any) {
@@ -33,7 +34,7 @@ function Cell(props: any) {
   let colIdx: number = col.positionIndex;
 
   const getInitialContent = () => {
-    let cellData: CellUpdateWinsType[] = [];
+    let cellData: CellType[] | undefined = [];
     if (useYMapStore.getState().yMap !== undefined)
       cellData = useYMapStore.getState().yMap.get(cellId);
     if (cellData === undefined || cellData[0] === undefined) return "";
@@ -49,39 +50,44 @@ function Cell(props: any) {
       yMapEvent.changes.keys.forEach(
         (change: { action: string; oldValue: any }, key: any) => {
           if (change.action === "update" && cellId === key) {
-            if (yMap.get(cellId).length === 0) return;
+            if (
+              yMap.get(cellId) !== undefined &&
+              yMap!.get(cellId)!.length === 0
+            )
+              return;
 
-            let length: number = yMap.get(cellId).length;
+            let length: number = yMap!.get(cellId)!.length;
             for (let i = 0; i < length; i++)
               if (
                 change.oldValue[0] !== undefined &&
-                change.oldValue[0].id !== yMap.get(cellId)[i].id
+                change.oldValue[0].id !== yMap!.get(cellId)![i].id
               ) {
                 //only enters here if there are concurrent operations on the same cell.
                 //check all the local yMap update wins set entries and compare with the remote changes. If id's of these operations differ then these are concurrent.
-                yMap.get(cellId).push(change.oldValue[0]);
+                yMap!.get(cellId)!.push(change.oldValue[0]);
               }
 
-            if (yMap.get(cellId).length == 1) {
+            if (yMap!.get(cellId)!.length == 1) {
               //if there are no concurrent operations
-              setContent(yMap.get(cellId)[0].content);
+              setContent(yMap!.get(cellId)![0].content);
               return;
             }
 
             let cellFinalContent: string = appendConcurrentUpdates();
             setContent(cellFinalContent as string);
-            setYmapEntry(cellId, [
+            yMap.set(cellId, [
               {
-                id: yMap.get(cellId)[0].id,
+                id: yMap.get(cellId)![0].id,
                 content: cellFinalContent,
               },
             ]);
           } else if (
             change.action === "add" &&
             cellId === key &&
-            yMap.get(key).length === 1
+            yMap.get(key) !== undefined &&
+            yMap!.get(key)!.length === 1
           )
-            setContent(yMap.get(key)[0].content);
+            setContent(yMap!.get(key)![0].content);
         },
       );
     };
@@ -106,14 +112,19 @@ function Cell(props: any) {
       });
       finalCellContent = String(formulaResult);
       console.log(`formulaResult: ${finalCellContent}`);
-      setYmapEntry(cellId, []);
-      setYmapEntry(cellId, [{ id: YDoc.clientID, content: finalCellContent }]);
+      yMap.set(cellId, []);
+      yMap.set(cellId, [{ id: YDoc.clientID, content: finalCellContent }]);
     }
-    if ((e.target.value as string) === (yMap.get(cellId)[0].content as string))
+    if (
+      (e.target.value as string) ===
+      (yMap.get(cellId) !== undefined &&
+        yMap!.get(cellId)![0] !== undefined &&
+        (yMap!.get(cellId)![0].content as string))
+    )
       return;
 
-    setYmapEntry(cellId, []);
-    setYmapEntry(cellId, [{ id: YDoc.clientID, content: finalCellContent }]);
+    yMap.set(cellId, []);
+    yMap.set(cellId, [{ id: YDoc.clientID, content: finalCellContent }]);
 
     let keepId: RemoveKeepOperationId = `c${YDoc.clientID as number}.${1 as number}`;
     yColKeep.set(col.id, [keepId]);
@@ -125,12 +136,12 @@ function Cell(props: any) {
     //yMap.get(cellId).length > 1 returns true if there are concurrent operations.
     for (
       let i = 0;
-      i < yMap.get(cellId).length &&
-      YDoc.clientID !== yMap.get(cellId)[i] &&
-      yMap.get(cellId).length > 1;
+      i < yMap!.get(cellId)!.length &&
+      YDoc.clientID !== yMap!.get(cellId)![i] &&
+      yMap!.get(cellId)!.length > 1;
       i++
     )
-      cellFinalContent += yMap.get(cellId)[i].content;
+      cellFinalContent += yMap!.get(cellId)![i].content;
     return cellFinalContent;
   };
 

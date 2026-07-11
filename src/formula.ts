@@ -9,7 +9,7 @@ const { FormulaHelpers, Types, FormulaError, MAX_ROW, MAX_COLUMN } =
   [4, 5, 6], // row 2
 ]; */
 
-let data: any[][] = [];
+let data: (string | number)[][] = [];
 
 const parserDriver = (
   spreadsheetData: string[][],
