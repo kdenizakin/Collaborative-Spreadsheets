@@ -71,9 +71,11 @@ function SpreadSheet(props: any) {
   const handleFormula = (
     completeFormula: string,
     position: { row: number; col: number; sheetName: string },
-  ): void => {
+  ): { markedCells: string[]; formulaResult: string } => {
     let spreadsheetData: string[][] = returnSpreadsheet();
-    return parserDriver(spreadsheetData, completeFormula, position);
+    console.log(spreadsheetData);
+    let result = parserDriver(spreadsheetData, completeFormula, position); //returns marked cells and formula result as a object.
+    return result;
   };
   //----------------------------------------------------------------------
 

@@ -10,6 +10,7 @@ type YDocType = {
 type CellType = {
   id: string;
   content: string;
+  markedCellIds?: string[]; //this array corresponds to the marked cells by the formula. When updates occur in those cells that are present in this array, the result of the formula will be updated.
   formula?: string;
 };
 

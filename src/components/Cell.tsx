@@ -16,6 +16,8 @@ type CellType = {
   id: string;
   content: string;
   formula?: string;
+  formulaReferenceCellIds?: string[];
+  markedCells?: string[];
 };
 
 function Cell(props: any) {
@@ -48,7 +50,7 @@ function Cell(props: any) {
 
     const observer = (yMapEvent: any) => {
       yMapEvent.changes.keys.forEach(
-        (change: { action: string; oldValue: any }, key: any) => {
+        (change: { action: string; oldValue: any }, key: string) => {
           if (change.action === "update" && cellId === key) {
             if (
               yMap.get(cellId) !== undefined &&
@@ -72,15 +74,21 @@ function Cell(props: any) {
               setContent(yMap!.get(cellId)![0].content);
               return;
             }
+            let currentCell = getCellContent(key)![0];
 
             let cellFinalContent: string = appendConcurrentUpdates();
-            setContent(cellFinalContent as string);
-            yMap.set(cellId, [
-              {
-                id: yMap.get(cellId)![0].id,
-                content: cellFinalContent,
-              },
-            ]);
+            console.log("sorun burada mi??");
+            setYMapContent(
+              cellId,
+              yMap.get(cellId)![0].id,
+              cellFinalContent,
+              currentCell.formula ?? undefined,
+              currentCell.formulaReferenceCellIds![0] ?? undefined,
+            );
+            console.log("formula: ", currentCell.formula);
+          } else if (change.action === "update" && cellId !== key) {
+            // one of the formula cells has been updated.
+            /* setContent(yMap!.get(cellId)![0].content); */
           } else if (
             change.action === "add" &&
             cellId === key &&
@@ -97,40 +105,6 @@ function Cell(props: any) {
     };
   }, [useYMapStore.getState()]);
 
-  const handleFocusOut = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const setYmapEntry = useYMapStore.getState().setEntry;
-    const formulaPattern = /[A-Z]+\([A-Z*][0-9]+:[A-Z*][0-9]+\)/; //we should first check if the given text is a formula or not.
-    const isValidFormula = formulaPattern.test(e.target.value as string);
-    let finalCellContent: string = e.target.value;
-
-    if (isValidFormula) {
-      console.log(`formula qualified ${e.target.value}`);
-      let formulaResult: number = handleFormula(e.target.value as string, {
-        row: rowIdx,
-        col: colIdx,
-        sheetName: "spreadsheet",
-      });
-      finalCellContent = String(formulaResult);
-      console.log(`formulaResult: ${finalCellContent}`);
-      yMap.set(cellId, []);
-      yMap.set(cellId, [{ id: YDoc.clientID, content: finalCellContent }]);
-    }
-    if (
-      (e.target.value as string) ===
-      (yMap.get(cellId) !== undefined &&
-        yMap!.get(cellId)![0] !== undefined &&
-        (yMap!.get(cellId)![0].content as string))
-    )
-      return;
-
-    yMap.set(cellId, []);
-    yMap.set(cellId, [{ id: YDoc.clientID, content: finalCellContent }]);
-
-    let keepId: RemoveKeepOperationId = `c${YDoc.clientID as number}.${1 as number}`;
-    yColKeep.set(col.id, [keepId]);
-    yRowKeep.set(row.id, [keepId]);
-  };
-
   const appendConcurrentUpdates = (): string => {
     let cellFinalContent: string = ""; //when all the concurrent operations are appended to each other (if they exist).
     //yMap.get(cellId).length > 1 returns true if there are concurrent operations.
@@ -145,6 +119,121 @@ function Cell(props: any) {
     return cellFinalContent;
   };
 
+  const markFormulaElementCells = (toBeMarkedCell: string, formula: string) => {
+    let refCell = getCellContent(toBeMarkedCell);
+
+    if (refCell !== undefined) {
+      refCell![0].formulaReferenceCellIds = [cellId];
+      refCell![0].formula = formula;
+
+      console.log(
+        `updated cells: ${JSON.stringify(yMap.get(toBeMarkedCell)![0])}`,
+      );
+    } else console.log(`Cell is undefined ${toBeMarkedCell}!`);
+  };
+
+  const handleFocusOut = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if ((e.target.value as string) === yMap.get(cellId)?.[0].content) return; // optional chaining with "?.".
+
+    const formulaPattern = /[A-Z]+\([A-Z*][0-9]+:[A-Z*][0-9]+\)/; //we should first check if the given text is a formula or not.
+    const isValidFormula = formulaPattern.test(e.target.value as string);
+    let currentCell = getCurrentCellContent!()![0];
+    let formula: string | undefined;
+
+    if (isValidFormula) {
+      console.log(`formula qualified ${e.target.value}`);
+      formula = e.target.value;
+
+      let result: { markedCells: string[]; formulaResult: string } =
+        handleFormula(e.target.value as string, {
+          row: rowIdx,
+          col: colIdx,
+          sheetName: "spreadsheet",
+        });
+      currentCell.markedCells = result.markedCells;
+
+      for (let i = 0; i < result.markedCells.length; i++) {
+        /*         console.log(`result.markedCells[i]: ${result.markedCells[i]}`);
+         */ markFormulaElementCells(result.markedCells[i], formula);
+      }
+      setYMapContent(cellId, YDoc.clientID, result.formulaResult, formula, []); //update the formula cell.
+      setContent(result.formulaResult);
+      return;
+    }
+
+    // this conditional is to update the content of the main formula cell. ?. is "optional chaining".
+    if (
+      currentCell.formulaReferenceCellIds?.[0] !== undefined &&
+      currentCell.formulaReferenceCellIds[0] !== cellId
+    ) {
+      setContent(e.target.value);
+      setYMapContent(
+        cellId,
+        YDoc.clientID,
+        e.target.value,
+        undefined,
+        currentCell.formulaReferenceCellIds,
+      ); //updating the current cell
+
+      let referencedCellId: string = currentCell.formulaReferenceCellIds[0];
+      formula = getCellContent(currentCell.formulaReferenceCellIds[0])![0]
+        .formula;
+      let result: { markedCells: string[]; formulaResult: string } =
+        handleFormula(formula as string, {
+          row: rowIdx,
+          col: colIdx,
+          sheetName: "spreadsheet",
+        });
+      setYMapContent(
+        referencedCellId,
+        YDoc.clientID,
+        result.formulaResult,
+        formula,
+        [],
+      ); //here updating the referenced cell.
+    } else {
+      console.log("here2");
+      setContent(e.target.value);
+      setYMapContent(
+        cellId,
+        YDoc.clientID,
+        e.target.value,
+        undefined, //formula
+        [],
+      );
+    }
+
+    let keepId: RemoveKeepOperationId = `c${YDoc.clientID as number}.${1 as number}`;
+    yColKeep.set(col.id, [keepId]);
+    yRowKeep.set(row.id, [keepId]);
+  };
+
+  const setYMapContent = (
+    cellID: string,
+    operationId: string,
+    newContent: string,
+    formula?: string,
+    formulaReferenceCellIds?: string[],
+  ) => {
+    yMap.set(cellID, []);
+    yMap.set(cellID, [
+      {
+        id: operationId,
+        content: newContent,
+        formula: formula ?? undefined,
+        formulaReferenceCellIds: formulaReferenceCellIds ?? undefined,
+      },
+    ]);
+  };
+
+  const getCurrentCellContent = (): CellType[] | undefined => {
+    return yMap.get(cellId);
+  };
+
+  const getCellContent = (targetCellId: string): CellType[] | undefined => {
+    return yMap.get(targetCellId);
+  };
+
   return (
     <>
       <div className="grid">
@@ -154,6 +243,7 @@ function Cell(props: any) {
             handleFocusOut={handleFocusOut}
             setContent={setContent}
           />
+          {cellId}
         </div>
       </div>
     </>

@@ -1,5 +1,21 @@
 const FormulaParser = require("fast-formula-parser");
 
+import {
+  useYMapStore,
+  useYColumnsStore,
+  useYRowsStore,
+  useUndoYColumnsStore,
+  useUndoYRowsStore,
+  useUndoMapStore,
+  useYColKeepStore,
+  useYRowKeepStore,
+} from "./YjsStore";
+
+let yColumns = useYColumnsStore.getState().yColumns;
+let yRows = useYRowsStore.getState().yRows;
+const yMap = useYMapStore.getState().yMap;
+const setYmapEntry = useYMapStore.getState().setEntry;
+
 const { FormulaHelpers, Types, FormulaError, MAX_ROW, MAX_COLUMN } =
   FormulaParser;
 
@@ -10,6 +26,7 @@ const { FormulaHelpers, Types, FormulaError, MAX_ROW, MAX_COLUMN } =
 ]; */
 
 let data: (string | number)[][] = [];
+let markedCells: string[];
 
 const parserDriver = (
   spreadsheetData: string[][],
@@ -17,18 +34,21 @@ const parserDriver = (
   position,
 ) => {
   data = spreadsheetData;
+  markedCells = [];
   let rowLength: number = data.length;
   let colLenght: number = data[0].length;
   for (let i = 0; i < colLenght; i++) {
     for (let j = 0; j < rowLength; j++) {
-      console.log(`data[i][j]: ${Number.isNaN(Number(data[i][j]))}`);
       if (!Number.isNaN(Number(data[i][j]))) {
         data[i][j] = Number(data[i][j]);
       } else data[i][j] = "";
     }
   }
-  console.log(data);
-  return parser.parse(formula, position, true);
+  let result = {
+    markedCells: markedCells,
+    formulaResult: parser.parse(formula, position, true),
+  };
+  return result;
 };
 
 const parser = new FormulaParser({
@@ -68,11 +88,17 @@ const parser = new FormulaParser({
     // Be careful when ref.to.col is MAX_COLUMN or ref.to.row is MAX_ROW, this will result in
     // unnecessary loops in this approach.
     const arr = [];
+
     for (let row = ref.from.row; row <= ref.to.row; row++) {
       const innerArr = [];
       if (data[row - 1]) {
         for (let col = ref.from.col; col <= ref.to.col; col++) {
-          innerArr.push(data[row - 1][col - 1]);
+          /* console.log(`col: ${yColumns.get(col - 1)}`);
+          console.log(`row: ${yRows.get(row - 1)}`); */
+          let cellId: string = `${yColumns.get(col - 1)},${yRows.get(row - 1)}`;
+          /*           console.log(`yMap: ${yMap.get(cellId)![0].content}`);
+           */ innerArr.push(data[row - 1][col - 1]);
+          markedCells.push(cellId);
         }
       }
       arr.push(innerArr);
