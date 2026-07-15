@@ -124,20 +124,27 @@ function Cell(props: any) {
 
     if (refCell !== undefined) {
       refCell![0].formulaReferenceCellIds = [cellId];
-      refCell![0].formula = formula;
 
-      console.log(
+      /* console.log(
         `updated cells: ${JSON.stringify(yMap.get(toBeMarkedCell)![0])}`,
-      );
+      ); */
     } else console.log(`Cell is undefined ${toBeMarkedCell}!`);
   };
 
   const handleFocusOut = (e: React.ChangeEvent<HTMLInputElement>) => {
     if ((e.target.value as string) === yMap.get(cellId)?.[0].content) return; // optional chaining with "?.".
 
+    let currentCell = getCurrentCellContent!()![0];
+    if (
+      currentCell.formula !== undefined &&
+      (e.target.value as string) === currentCell.formula
+    ) {
+      setContent(currentCell.content);
+      return;
+    }
+
     const formulaPattern = /[A-Z]+\([A-Z*][0-9]+:[A-Z*][0-9]+\)/; //we should first check if the given text is a formula or not.
     const isValidFormula = formulaPattern.test(e.target.value as string);
-    let currentCell = getCurrentCellContent!()![0];
     let formula: string | undefined;
 
     if (isValidFormula) {
@@ -208,6 +215,16 @@ function Cell(props: any) {
     yRowKeep.set(row.id, [keepId]);
   };
 
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    let currentCellArray = getCurrentCellContent();
+    if (currentCellArray && currentCellArray[0]) {
+      let currentCell = currentCellArray[0];
+      if (currentCell.formula !== undefined) {
+        setContent(currentCell.formula);
+      }
+    }
+  };
+
   const setYMapContent = (
     cellID: string,
     operationId: string,
@@ -241,9 +258,9 @@ function Cell(props: any) {
           <InputField
             cellContent={content}
             handleFocusOut={handleFocusOut}
+            handleFocus={handleFocus}
             setContent={setContent}
           />
-          {cellId}
         </div>
       </div>
     </>

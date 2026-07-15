@@ -2,6 +2,7 @@ function InputField(props: any) {
   const handleCellChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     props.setContent(e.target.value);
   };
+
   return (
     <>
       <div className="grid">
@@ -15,6 +16,7 @@ function InputField(props: any) {
               handleCellChange(e);
             }}
             onBlur={(e) => props.handleFocusOut(e)}
+            onFocus={(e) => props.handleFocus(e)}
           ></input>
         </div>
       </div>
