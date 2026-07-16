@@ -16,8 +16,8 @@ type CellType = {
   id: string;
   content: string;
   formula?: string;
-  formulaReferenceCellIds?: string[];
-  markedCells?: string[];
+  formulaReferenceCellIds?: string[]; // this points to the formula cell from the referenced cell.
+  markedCells?: string[]; // if the cell has a formula then it has to store all the referenced cells. To "register" them for updates and "deregister" them.
 };
 
 function Cell(props: any) {
@@ -77,13 +77,12 @@ function Cell(props: any) {
             let currentCell = getCellContent(key)![0];
 
             let cellFinalContent: string = appendConcurrentUpdates();
-            console.log("sorun burada mi??");
             setYMapContent(
               cellId,
               yMap.get(cellId)![0].id,
               cellFinalContent,
               currentCell.formula ?? undefined,
-              currentCell.formulaReferenceCellIds![0] ?? undefined,
+              currentCell.formulaReferenceCellIds ?? undefined,
             );
             console.log("formula: ", currentCell.formula);
           } else if (change.action === "update" && cellId !== key) {
@@ -119,8 +118,8 @@ function Cell(props: any) {
     return cellFinalContent;
   };
 
-  const markFormulaElementCells = (toBeMarkedCell: string, formula: string) => {
-    let refCell = getCellContent(toBeMarkedCell);
+  const registerFormulaElementCells = (toBeRegisteredCell: string) => {
+    let refCell = getCellContent(toBeRegisteredCell);
 
     if (refCell !== undefined) {
       refCell![0].formulaReferenceCellIds = [cellId];
@@ -128,7 +127,20 @@ function Cell(props: any) {
       /* console.log(
         `updated cells: ${JSON.stringify(yMap.get(toBeMarkedCell)![0])}`,
       ); */
-    } else console.log(`Cell is undefined ${toBeMarkedCell}!`);
+    } else console.log(`Cell is undefined ${toBeRegisteredCell}!`);
+  };
+
+  const deregisterFormulaElementCells = (toBeDeregisteredCell: string) => {
+    let refCell = getCellContent(toBeDeregisteredCell);
+    console.log(
+      `initial cells: ${JSON.stringify(yMap.get(toBeDeregisteredCell)![0])}`,
+    );
+    if (refCell !== undefined) {
+      refCell![0].formulaReferenceCellIds = [];
+      console.log(
+        `updated cells: ${JSON.stringify(yMap.get(toBeDeregisteredCell)![0])}`,
+      );
+    } else console.log(`Cell is undefined ${toBeDeregisteredCell}!`);
   };
 
   const handleFocusOut = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -158,12 +170,20 @@ function Cell(props: any) {
           sheetName: "spreadsheet",
         });
       currentCell.markedCells = result.markedCells;
+      console.log(currentCell.markedCells);
 
       for (let i = 0; i < result.markedCells.length; i++) {
         /*         console.log(`result.markedCells[i]: ${result.markedCells[i]}`);
-         */ markFormulaElementCells(result.markedCells[i], formula);
+         */ registerFormulaElementCells(result.markedCells[i]);
       }
-      setYMapContent(cellId, YDoc.clientID, result.formulaResult, formula, []); //update the formula cell.
+      setYMapContent(
+        cellId,
+        YDoc.clientID,
+        result.formulaResult,
+        formula,
+        undefined,
+        currentCell.markedCells,
+      ); //update the formula cell itself (when current cell has the formula).
       setContent(result.formulaResult);
       return;
     }
@@ -180,27 +200,46 @@ function Cell(props: any) {
         e.target.value,
         undefined,
         currentCell.formulaReferenceCellIds,
-      ); //updating the current cell
+        undefined,
+      ); //updating the current cell itself
 
       let referencedCellId: string = currentCell.formulaReferenceCellIds[0];
-      formula = getCellContent(currentCell.formulaReferenceCellIds[0])![0]
-        .formula;
+      let referencedCell = getCellContent(referencedCellId)?.[0];
+      formula = referencedCell?.formula;
+
       let result: { markedCells: string[]; formulaResult: string } =
         handleFormula(formula as string, {
           row: rowIdx,
           col: colIdx,
           sheetName: "spreadsheet",
         });
+
       setYMapContent(
         referencedCellId,
         YDoc.clientID,
         result.formulaResult,
         formula,
-        [],
-      ); //here updating the referenced cell.
+        undefined,
+        referencedCell?.markedCells,
+      ); //here updating the referenced formula cell.
     } else {
-      console.log("here2");
+      //when current cell has no formula, no referenced formula cell. Just a normal one.
+
+      // It also covers when there is a formula defined in the cell but gets deleted. In that case all the referenced cells have to be deregistered.
+      // This is one of the reasons that the formula cell has the array of cells that are used to compute the final result.
       setContent(e.target.value);
+      for (
+        let i = 0;
+        currentCell.markedCells?.length !== undefined &&
+        i < currentCell.markedCells?.length;
+        i++
+      ) {
+        //now deregister all the marked cells.
+        /*         console.log(`result.markedCells[i]: ${result.markedCells[i]}`);
+         */
+        deregisterFormulaElementCells(currentCell.markedCells[i]);
+      }
+
       setYMapContent(
         cellId,
         YDoc.clientID,
@@ -231,6 +270,7 @@ function Cell(props: any) {
     newContent: string,
     formula?: string,
     formulaReferenceCellIds?: string[],
+    markedCells?: string[],
   ) => {
     yMap.set(cellID, []);
     yMap.set(cellID, [
@@ -239,6 +279,7 @@ function Cell(props: any) {
         content: newContent,
         formula: formula ?? undefined,
         formulaReferenceCellIds: formulaReferenceCellIds ?? undefined,
+        markedCells: markedCells ?? undefined,
       },
     ]);
   };
