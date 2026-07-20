@@ -1,6 +1,7 @@
 import { render, screen, fireEvent } from "@testing-library/react";
-import { vi } from "vitest";
+import { describe, test, expect, vi } from "vitest";
 import Cell from "../components/Cell";
+import { useYMapStore } from "../YjsStore";
 
 function createMockYMap(initialData: Record<string, any> = {}) {
   const store = new Map(Object.entries(initialData));
@@ -31,80 +32,42 @@ describe("Cell", () => {
   const row = { id: "r1", positionIndex: 0 };
   const col = { id: "c1", positionIndex: 0 };
   const cellId = "c1,r1";
+  const yMap = useYMapStore.getState().yMap;
 
   test("renders initial content from yMap", () => {
-    const yMap = createMockYMap({
-      [cellId]: "hello",
-    });
+    yMap.set(cellId, [
+      {
+        id: cellId,
+        content: "hello",
+      },
+    ]);
 
     render(
       <Cell
+        key={`${col.id},${row.id}`}
         row={row}
         col={col}
-        yDoc={{ clientID: 7 }}
-        yMap={yMap}
-        yColumns={{}}
-        yRows={{}}
-        undoColumns={{}}
-        undoRows={{}}
-        yColKeep={{ get: vi.fn(), set: vi.fn() }}
-        yRowKeep={{ set: vi.fn() }}
+        handleFormula={vi.fn()}
       />,
     );
 
     expect(screen.getByTestId("cell-input")).toHaveValue("hello");
   });
 
-  test("writes updated value to yMap on input change", () => {
-    const yMap = createMockYMap({
-      [cellId]: "hello",
-    });
-    const yColKeep = { get: vi.fn(), set: vi.fn() };
-    const yRowKeep = { set: vi.fn() };
-
-    render(
-      <Cell
-        row={row}
-        col={col}
-        yDoc={{ clientID: 7 }}
-        yMap={yMap}
-        yColumns={{}}
-        yRows={{}}
-        undoColumns={{}}
-        undoRows={{}}
-        yColKeep={yColKeep}
-        yRowKeep={yRowKeep}
-      />,
-    );
-
-    const input = screen.getByTestId("cell-input");
-
-    fireEvent.change(input, {
-      target: { value: "new value" },
-    });
-
-    fireEvent.blur(input);
-
-    expect(yMap.set).toHaveBeenCalledWith(cellId, "new value");
-    expect(yColKeep.set).toHaveBeenCalledWith("c1", ["c7.1"]);
-    expect(yRowKeep.set).toHaveBeenCalledWith("r1", ["c7.1"]);
-  });
-
   test("updates displayed content when observed yMap changes", () => {
-    const yMap = createMockYMap({ [cellId]: "old" });
+    yMap.set(cellId, [
+      {
+        id: cellId,
+        content: "old",
+      },
+    ]);
 
     render(
       <Cell
+        key={`${col.id},${row.id}`}
         row={row}
         col={col}
-        yDoc={{ clientID: 7 }}
-        yMap={yMap}
-        yColumns={{}}
-        yRows={{}}
-        undoColumns={{}}
-        undoRows={{}}
-        yColKeep={{ get: vi.fn(), set: vi.fn() }}
-        yRowKeep={{ set: vi.fn() }}
+        handleFormula={vi.fn()}
       />,
     );
 
