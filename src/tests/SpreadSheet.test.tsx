@@ -8,6 +8,16 @@ import {
 import { describe, test, expect, beforeEach, vi } from "vitest";
 import * as Y from "yjs";
 import SpreadSheet from "../components/SpreadSheet";
+import {
+  useYDocStore,
+  useYMapStore,
+  useYColumnsStore,
+  useYRowsStore,
+  useUndoYColumnsStore,
+  useUndoYRowsStore,
+  useYColKeepStore,
+  useYRowKeepStore,
+} from "../YjsStore";
 
 vi.mock("../components/Cell.tsx", () => ({
   default: ({ row, col }: any) => (
@@ -18,8 +28,8 @@ vi.mock("../components/Cell.tsx", () => ({
 }));
 
 vi.mock("../components/ColumnHeader.tsx", () => ({
-  default: ({ columnId }: any) => (
-    <div data-testid={`mock-col-header-${columnId}`}>{columnId}</div>
+  default: ({ column }: any) => (
+    <div data-testid={`mock-col-header-${column.id}`}>{column.id}</div>
   ),
 }));
 
@@ -53,33 +63,31 @@ describe("SpreadSheet Tests", () => {
   let yColKeep: Y.Map<any>;
   let yRowKeep: Y.Map<any>;
   let undoManager: Y.UndoManager;
+  let undoColumns: Y.UndoManager;
+  let undoRows: Y.UndoManager;
 
   beforeEach(() => {
     idCounter = 1;
-    doc = new Y.Doc();
-    yMap = doc.getMap("cells");
-    yColumns = doc.getArray("columns");
-    yRows = doc.getArray("rows");
-    yColKeep = doc.getMap("colKeep");
-    yRowKeep = doc.getMap("rowKeep");
+    doc = useYDocStore.getState().YDoc;
+    yMap = useYMapStore.getState().yMap;
+    yColumns = useYColumnsStore.getState().yColumns;
+    yRows = useYRowsStore.getState().yRows;
+    yColKeep = useYColKeepStore.getState().yColKeep;
+    yRowKeep = useYRowKeepStore.getState().yRowKeep;
     undoManager = new Y.UndoManager([yColumns, yRows]);
+    undoColumns = useUndoYColumnsStore.getState().undoColumns;
+    undoRows = useUndoYRowsStore.getState().undoRows;
+
+    yColumns.delete(0, yColumns.length);
+    yRows.delete(0, yRows.length);
+    yMap.clear();
+    undoManager.clear();
+    undoRows.clear();
+    undoColumns.clear();
   });
 
   const renderComponent = () =>
-    render(
-      <SpreadSheet
-        yDoc={doc}
-        yMap={yMap}
-        yColumns={yColumns}
-        yRows={yRows}
-        undoColumns={undoManager}
-        undoRows={undoManager}
-        yColKeep={yColKeep}
-        yRowKeep={yRowKeep}
-        isConnected={true}
-        setIsConnected={vi.fn()}
-      />,
-    );
+    render(<SpreadSheet isConnected={true} setIsConnected={vi.fn()} />);
 
   test("1. Renders empty sheet", () => {
     renderComponent();
@@ -119,7 +127,7 @@ describe("SpreadSheet Tests", () => {
       expect(screen.getByTestId("mock-col-header-id-1")).toBeInTheDocument();
 
       expect(yMap.has("id-1,r1")).toBe(true);
-      expect(yMap.get("id-1,r1")).toBe("");
+      expect(yMap.get("id-1,r1")[0].content).toBe("");
     });
   });
 
@@ -207,7 +215,7 @@ describe("SpreadSheet Tests", () => {
     });
 
     act(() => {
-      undoManager.undo();
+      undoRows.undo();
     });
 
     await waitFor(() => {
@@ -217,7 +225,38 @@ describe("SpreadSheet Tests", () => {
     });
   });
 
-  test("8. Offline modification restores deleted row/col with keep maps", async () => {
+  test("8. Undo manager restores deleted col", async () => {
+    renderComponent();
+
+    act(() => {
+      yColumns.insert(0, ["c1"]);
+      yRows.insert(0, ["r1"]);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("mock-cell-c1,r1")).toBeInTheDocument();
+    });
+
+    act(() => {
+      yColumns.delete(0, 1);
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("mock-cell-c1,r1")).not.toBeInTheDocument();
+    });
+
+    act(() => {
+      undoColumns.undo();
+    });
+
+    await waitFor(() => {
+      expect(yColumns.length).toBe(1);
+      expect(yColumns.get(0)).toBe("c1");
+      expect(screen.getByTestId("mock-cell-c1,r1")).toBeInTheDocument();
+    });
+  });
+
+  test("9. Offline modification restores deleted row/col with keep maps", async () => {
     renderComponent();
 
     //online client

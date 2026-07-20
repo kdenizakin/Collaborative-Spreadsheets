@@ -17,9 +17,6 @@ function ColumnHeader(props: any) {
           className="remove-button"
           onClick={() => props.removeColumn(props.column)}
         ></Button>
-        <div className="col-7 md:col-6 lg:col-12">
-          <p>{props.columnId}</p>
-        </div>
       </div>
     </>
   );
