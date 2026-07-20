@@ -19,11 +19,14 @@ const setYmapEntry = useYMapStore.getState().setEntry;
 const { FormulaHelpers, Types, FormulaError, MAX_ROW, MAX_COLUMN } =
   FormulaParser;
 
-/* const data = [
-  // A  B  C
-  [1, 2, 3], // row 1
-  [4, 5, 6], // row 2
-]; */
+//Error handling
+/* FormulaError.DIV0: #DIV/0!
+FormulaError.NA: #N/A
+FormulaError.NAME: #NAME?
+FormulaError.NULL: #NULL!
+FormulaError.NUM: #NUM!
+FormulaError.REF: #REF!
+FormulaError.VALUE: #VALUE! */
 
 let data: (string | number)[][] = [];
 let markedCells: string[];
@@ -52,8 +55,6 @@ const parserDriver = (
 };
 
 const parser = new FormulaParser({
-  // Variable used in formulas (defined name)
-  // Should only return range reference or cell reference
   onVariable: (name, sheetName) => {
     // If it is a range reference (A1:B2)
     return {
@@ -75,18 +76,13 @@ const parser = new FormulaParser({
     };
   },
 
-  // retrieve cell value
   onCell: ({ sheet, row, col }) => {
-    // using 1-based index
-    // return the cell value, see possible types in next section.
+    //For example: A1 + 5
     return data[row - 1][col - 1];
   },
 
-  // retrieve range values
   onRange: (ref) => {
-    // using 1-based index
-    // Be careful when ref.to.col is MAX_COLUMN or ref.to.row is MAX_ROW, this will result in
-    // unnecessary loops in this approach.
+    //ex: SUM(A1:B2)
     const arr = [];
 
     for (let row = ref.from.row; row <= ref.to.row; row++) {
@@ -97,7 +93,7 @@ const parser = new FormulaParser({
           console.log(`row: ${yRows.get(row - 1)}`); */
           let cellId: string = `${yColumns.get(col - 1)},${yRows.get(row - 1)}`;
           /*           console.log(`yMap: ${yMap.get(cellId)![0].content}`);
-           */ innerArr.push(data[row - 1][col - 1]);
+           */ innerArr.push(data[row - 1][col - 1]); // this library uses 1-based index
           markedCells.push(cellId);
         }
       }
