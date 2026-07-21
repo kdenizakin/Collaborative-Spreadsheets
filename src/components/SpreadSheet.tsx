@@ -71,13 +71,25 @@ function SpreadSheet(props: any) {
   const handleFormula = (
     completeFormula: string,
     position: { row: number; col: number; sheetName: string },
+    formulaCellId: string,
   ): { markedCells: string[]; formulaResult: string } => {
     let spreadsheetData: string[][] = returnSpreadsheet();
-    console.log(spreadsheetData);
+    //console.log(spreadsheetData);
     let result: {
       markedCells: string[];
       formulaResult: any;
     } = parserDriver(spreadsheetData, completeFormula, position); //returns marked cells and formula result as a object.
+
+    for (let i = 0; i < result.markedCells.length; i++) {
+      //to detect circular reference
+      if (formulaCellId === result.markedCells[i]) {
+        console.log("Circular reference detected!");
+        result = {
+          markedCells: [],
+          formulaResult: "0",
+        };
+      }
+    }
     return result;
   };
   //----------------------------------------------------------------------

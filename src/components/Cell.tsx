@@ -122,24 +122,23 @@ function Cell(props: any) {
     let refCell = getCellContent(toBeRegisteredCell);
 
     if (refCell !== undefined) {
-      refCell![0].formulaReferenceCellIds = [cellId];
+      refCell![0].formulaReferenceCellIds?.push(cellId);
 
-      /* console.log(
-        `updated cells: ${JSON.stringify(yMap.get(toBeMarkedCell)![0])}`,
-      ); */
+      /*       console.log(`${JSON.stringify(refCell![0].formulaReferenceCellIds)}`);
+       */
     } else console.log(`Cell is undefined ${toBeRegisteredCell}!`);
   };
 
   const deregisterFormulaElementCells = (toBeDeregisteredCell: string) => {
     let refCell = getCellContent(toBeDeregisteredCell);
-    console.log(
+    /* console.log(
       `initial cells: ${JSON.stringify(yMap.get(toBeDeregisteredCell)![0])}`,
-    );
+    ); */
     if (refCell !== undefined) {
       refCell![0].formulaReferenceCellIds = [];
-      console.log(
+      /* console.log(
         `updated cells: ${JSON.stringify(yMap.get(toBeDeregisteredCell)![0])}`,
-      );
+      ); */
     } else console.log(`Cell is undefined ${toBeDeregisteredCell}!`);
   };
 
@@ -164,17 +163,35 @@ function Cell(props: any) {
       formula = e.target.value;
 
       let result: { markedCells: string[]; formulaResult: string } =
-        handleFormula(e.target.value as string, {
-          row: rowIdx,
-          col: colIdx,
-          sheetName: "spreadsheet",
-        });
-      currentCell.markedCells = result.markedCells;
-      console.log(currentCell.markedCells);
+        handleFormula(
+          e.target.value as string,
+          {
+            row: rowIdx,
+            col: colIdx,
+            sheetName: "spreadsheet",
+          },
+          cellId,
+        );
 
+      console.log(result);
+      if (result.formulaResult === "0") {
+        setYMapContent(
+          cellId,
+          YDoc.clientID,
+          "0",
+          formula,
+          undefined,
+          undefined,
+        ); //update the formula cell itself (when current cell has the formula).
+        setContent("0");
+        //here updating the referenced formula cell.
+        return;
+      }
+      currentCell.markedCells = result.markedCells;
+      /*       console.log(currentCell.markedCells);
+       */
       for (let i = 0; i < result.markedCells.length; i++) {
-        /*         console.log(`result.markedCells[i]: ${result.markedCells[i]}`);
-         */ registerFormulaElementCells(result.markedCells[i]);
+        registerFormulaElementCells(result.markedCells[i]);
       }
       setYMapContent(
         cellId,
@@ -189,9 +206,10 @@ function Cell(props: any) {
     }
 
     // this conditional is to update the content of the main formula cell. ?. is "optional chaining".
-    if (
-      currentCell.formulaReferenceCellIds?.[0] !== undefined &&
-      currentCell.formulaReferenceCellIds[0] !== cellId
+    let i = 0;
+    while (
+      currentCell.formulaReferenceCellIds?.[i] !== undefined &&
+      currentCell.formulaReferenceCellIds[i] !== cellId
     ) {
       setContent(e.target.value);
       setYMapContent(
@@ -203,16 +221,20 @@ function Cell(props: any) {
         undefined,
       ); //updating the current cell itself
 
-      let referencedCellId: string = currentCell.formulaReferenceCellIds[0];
-      let referencedCell = getCellContent(referencedCellId)?.[0];
+      let referencedCellId: string = currentCell.formulaReferenceCellIds[i];
+      let referencedCell = getCellContent(referencedCellId)?.[i];
       formula = referencedCell?.formula;
 
       let result: { markedCells: string[]; formulaResult: string } =
-        handleFormula(formula as string, {
-          row: rowIdx,
-          col: colIdx,
-          sheetName: "spreadsheet",
-        });
+        handleFormula(
+          formula as string,
+          {
+            row: rowIdx,
+            col: colIdx,
+            sheetName: "spreadsheet",
+          },
+          referencedCellId,
+        );
 
       setYMapContent(
         referencedCellId,
@@ -222,7 +244,13 @@ function Cell(props: any) {
         undefined,
         referencedCell?.markedCells,
       ); //here updating the referenced formula cell.
-    } else {
+      i += 1;
+    }
+
+    if (
+      !isValidFormula &&
+      currentCell.formulaReferenceCellIds?.[0] === undefined
+    ) {
       //when current cell has no formula, no referenced formula cell. Just a normal one.
 
       // It also covers when there is a formula defined in the cell but gets deleted. In that case all the referenced cells have to be deregistered.

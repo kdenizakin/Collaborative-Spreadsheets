@@ -7,12 +7,11 @@ const yRows = useYRowsStore.getState().yRows;
 
 type SpreadSheetStore = {
   rows: string[][];
-  fetchSpreadsheet: Function;
+  fetchSpreadsheet: () => string[][];
 };
 
-const returnSpreadsheet = () => {
+const returnSpreadsheet = (): string[][] => {
   let matrix: string[][] = [];
-
   for (let i = 0; i < yRows.length; i++) {
     let currentRow: string[] = [];
     for (let j = 0; j < yColumns.length; j++) {
