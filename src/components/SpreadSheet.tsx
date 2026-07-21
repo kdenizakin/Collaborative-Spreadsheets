@@ -74,7 +74,7 @@ function SpreadSheet(props: any) {
     formulaCellId: string,
   ): { markedCells: string[]; formulaResult: string } => {
     let spreadsheetData: string[][] = returnSpreadsheet();
-    //console.log(spreadsheetData);
+    console.log(spreadsheetData);
     let result: {
       markedCells: string[];
       formulaResult: any;

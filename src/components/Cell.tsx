@@ -124,8 +124,7 @@ function Cell(props: any) {
     if (refCell !== undefined) {
       refCell![0].formulaReferenceCellIds?.push(cellId);
 
-      /*       console.log(`${JSON.stringify(refCell![0].formulaReferenceCellIds)}`);
-       */
+      console.log(`${JSON.stringify(refCell![0].formulaReferenceCellIds)}`);
     } else console.log(`Cell is undefined ${toBeRegisteredCell}!`);
   };
 
@@ -173,18 +172,18 @@ function Cell(props: any) {
           cellId,
         );
 
-      console.log(result);
       if (result.formulaResult === "0") {
         setYMapContent(
           cellId,
           YDoc.clientID,
           "0",
           formula,
-          undefined,
+          currentCell.formulaReferenceCellIds,
           undefined,
         ); //update the formula cell itself (when current cell has the formula).
         setContent("0");
         //here updating the referenced formula cell.
+        console.log(currentCell);
         return;
       }
       currentCell.markedCells = result.markedCells;
@@ -202,6 +201,7 @@ function Cell(props: any) {
         currentCell.markedCells,
       ); //update the formula cell itself (when current cell has the formula).
       setContent(result.formulaResult);
+
       return;
     }
 
