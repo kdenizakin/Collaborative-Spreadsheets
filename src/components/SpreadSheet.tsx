@@ -8,7 +8,6 @@ import { nanoid as uuidv4 } from "nanoid";
 import * as Y from "yjs";
 import SpreadSheetHeader from "./SpreadSheetHeader.tsx";
 import { parserDriver } from "../formula.ts";
-import { useSpreadsheetStore } from "../SpreadsheetStore.ts";
 
 import {
   useYMapStore,
@@ -51,9 +50,6 @@ function SpreadSheet(props: any) {
   //------------------------------------------------------------------------
 
   const deleteMapEntry = useYMapStore((state) => state.deleteEntry);
-  const returnSpreadsheet = useSpreadsheetStore(
-    (state) => state.fetchSpreadsheet,
-  );
 
   //---------------------------Formulas-------------------------------------
   const handleFormula = (
@@ -61,12 +57,10 @@ function SpreadSheet(props: any) {
     position: { row: number; col: number; sheetName: string },
     formulaCellId: string,
   ): { markedCells: string[]; formulaResult: string } => {
-    let spreadsheetData: string[][] = returnSpreadsheet();
-    console.log(spreadsheetData);
     let result: {
       markedCells: string[];
       formulaResult: any;
-    } = parserDriver(spreadsheetData, completeFormula, position); //returns marked cells and formula result as a object.
+    } = parserDriver(completeFormula, position); //returns marked cells and formula result as a object.
 
     for (let i = 0; i < result.markedCells.length; i++) {
       //to detect circular reference
