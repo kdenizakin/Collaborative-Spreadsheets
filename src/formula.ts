@@ -24,22 +24,8 @@ const { FormulaHelpers, Types, FormulaError, MAX_ROW, MAX_COLUMN } =
 let data: (string | number)[][] = [];
 let markedCells: string[];
 
-const parserDriver = (
-  spreadsheetData: string[][],
-  formula: string,
-  position,
-) => {
-  data = spreadsheetData;
+const parserDriver = (formula: string, position) => {
   markedCells = [];
-  let rowLength: number = data.length;
-  let colLenght: number = data[0].length;
-  for (let i = 0; i < colLenght; i++) {
-    for (let j = 0; j < rowLength; j++) {
-      if (!Number.isNaN(Number(data[i][j]))) {
-        data[i][j] = Number(data[i][j]);
-      } else data[i][j] = "";
-    }
-  }
   let result = {
     markedCells: markedCells,
     formulaResult: parser.parse(formula, position, true),
@@ -80,12 +66,12 @@ const parser = new FormulaParser({
 
     for (let row = ref.from.row; row <= ref.to.row; row++) {
       const innerArr = [];
-      if (data[row - 1]) {
-        for (let col = ref.from.col; col <= ref.to.col; col++) {
-          let cellId: string = `${yColumns.get(col - 1)},${yRows.get(row - 1)}`;
-          innerArr.push(data[row - 1][col - 1]); // this library uses 1-based index
-          markedCells.push(cellId);
-        }
+      for (let col = ref.from.col; col <= ref.to.col; col++) {
+        let cellId: string = `${yColumns.get(col - 1)},${yRows.get(row - 1)}`;
+        if (!Number.isNaN(Number(yMap.get(cellId)![0].content))) {
+          innerArr.push(Number(yMap.get(cellId)![0].content));
+        } else innerArr.push("");
+        markedCells.push(cellId);
       }
       arr.push(innerArr);
     }
