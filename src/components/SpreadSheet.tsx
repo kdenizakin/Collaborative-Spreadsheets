@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, use } from "react";
+import { useState, useEffect } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import ColumnHeader from "./ColumnHeader.tsx";
@@ -7,8 +7,10 @@ import { Button } from "primereact/button";
 import { nanoid as uuidv4 } from "nanoid";
 import * as Y from "yjs";
 import SpreadSheetHeader from "./SpreadSheetHeader.tsx";
+import { parserDriver } from "../formula.ts";
+import { useSpreadsheetStore } from "../SpreadsheetStore.ts";
+
 import {
-  useYDocStore,
   useYMapStore,
   useYColumnsStore,
   useYRowsStore,
@@ -30,7 +32,6 @@ type CellId = {
 //---------------------------------------------------------------
 
 //-----------------------------Yjs States-----------------------------
-let yMap = useYMapStore.getState().yMap;
 let yColumns = useYColumnsStore.getState().yColumns;
 let yRows = useYRowsStore.getState().yRows;
 let undoColumns = useUndoYColumnsStore.getState().undoColumns;
@@ -38,7 +39,6 @@ let undoRows = useUndoYRowsStore.getState().undoRows;
 let undoMap = useUndoMapStore.getState().undoMap;
 let yColKeep = useYColKeepStore.getState().yColKeep;
 let yRowKeep = useYRowKeepStore.getState().yRowKeep;
-
 //------------------------------------------------------------------------
 
 function SpreadSheet(props: any) {
@@ -51,6 +51,36 @@ function SpreadSheet(props: any) {
   //------------------------------------------------------------------------
 
   const deleteMapEntry = useYMapStore((state) => state.deleteEntry);
+  const returnSpreadsheet = useSpreadsheetStore(
+    (state) => state.fetchSpreadsheet,
+  );
+
+  //---------------------------Formulas-------------------------------------
+  const handleFormula = (
+    completeFormula: string,
+    position: { row: number; col: number; sheetName: string },
+    formulaCellId: string,
+  ): { markedCells: string[]; formulaResult: string } => {
+    let spreadsheetData: string[][] = returnSpreadsheet();
+    console.log(spreadsheetData);
+    let result: {
+      markedCells: string[];
+      formulaResult: any;
+    } = parserDriver(spreadsheetData, completeFormula, position); //returns marked cells and formula result as a object.
+
+    for (let i = 0; i < result.markedCells.length; i++) {
+      //to detect circular reference
+      if (formulaCellId === result.markedCells[i]) {
+        console.log("Circular reference detected!");
+        result = {
+          markedCells: [],
+          formulaResult: "0",
+        };
+      }
+    }
+    return result;
+  };
+  //----------------------------------------------------------------------
 
   //-----------------------------YColumns/YRows Observers-----------------------------
   useEffect(() => {
@@ -59,7 +89,7 @@ function SpreadSheet(props: any) {
         (change: { insert: string; delete?: any }, key: any) => {
           if (change.insert !== undefined) {
             for (let j: number = 0; j < change.insert.length; j++) {
-              let index: number = findYElement(change.insert[j], yColumns);
+              let index: number = findYArrayElement(change.insert[j], yColumns);
               setColumns((columns) => [
                 ...columns.slice(0, index),
                 { id: change.insert[j], positionIndex: index - 1 },
@@ -68,11 +98,6 @@ function SpreadSheet(props: any) {
               increaseColumnPositionIndexes(index);
             }
           } else if (change.delete !== undefined) {
-            /* console.log(
-              `Property "${key}" was deleted. New value: "${useYMapStore
-                .getState()
-                .yMap.get(key)}". Previous value: "".`,
-            ); */
           }
         },
       );
@@ -103,7 +128,7 @@ function SpreadSheet(props: any) {
         (change: { insert: string; delete?: any }, key: any) => {
           if (change.insert !== undefined) {
             for (let i = 0; i < change.insert.length; i++) {
-              let index: number = findYElement(change.insert[i], yRows);
+              let index: number = findYArrayElement(change.insert[i], yRows);
               setRows((rows) => [
                 ...rows.slice(0, index),
                 {
@@ -185,10 +210,10 @@ function SpreadSheet(props: any) {
     return uuidv4(10);
   };
 
-  const findYElement = (id: string, yStructure: Y.Array<unknown>): number => {
+  const findYArrayElement = (id: string, yArray: Y.Array<string>): number => {
     let index: number = 0;
-    for (let i = 0; i < yStructure.length; i++) {
-      if (id === yStructure.get(i)) index = i;
+    for (let i = 0; i < yArray.length; i++) {
+      if (id === (yArray.get(i) as string)) index = i;
     }
     return index;
   };
@@ -217,7 +242,7 @@ function SpreadSheet(props: any) {
         colId: newColId,
         colIdxrowId: `${newColId},${rowIdTemp}`,
       };
-      setYmapEntry(cellId.colIdxrowId, [{ id: "", content: "" }]);
+      setYmapEntry(cellId.colIdxrowId, "");
     }
   };
 
@@ -245,7 +270,7 @@ function SpreadSheet(props: any) {
         colIdxrowId: `${colIdTemp},${newRowId}`,
       };
       ids.push(cellId);
-      setYmapEntry(cellId.colIdxrowId, [{ id: "", content: "" }]);
+      setYmapEntry(cellId.colIdxrowId, "");
     }
   };
 
@@ -349,6 +374,7 @@ function SpreadSheet(props: any) {
                       key={`${columnData.id},${rowData.id}`}
                       row={rowData}
                       col={columnData}
+                      handleFormula={handleFormula}
                     />
                   )}
                 />
