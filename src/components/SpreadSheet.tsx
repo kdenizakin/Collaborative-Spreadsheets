@@ -56,18 +56,6 @@ function SpreadSheet(props: any) {
   );
 
   //---------------------------Formulas-------------------------------------
-  //const position = { row: 1, col: 1, sheet: "spreadsheet" };
-
-  // parse the formula, the position of where the formula is located is required
-  // for some functions.
-  /* console.log("formula testing:");
-  console.log(parser.parse("PRODUCT(A1:B3)", position)); */
-
-  // you can specify if the return value can be an array, this is helpful when dealing
-  // with an array formula
-  //console.log(parser.parse("MMULT({1,5;2,3},{1,2;2,3})", position, true));
-  // print [ [ 11, 17 ], [ 8, 13 ] ]
-
   const handleFormula = (
     completeFormula: string,
     position: { row: number; col: number; sheetName: string },
@@ -110,11 +98,6 @@ function SpreadSheet(props: any) {
               increaseColumnPositionIndexes(index);
             }
           } else if (change.delete !== undefined) {
-            /* console.log(
-              `Property "${key}" was deleted. New value: "${useYMapStore
-                .getState()
-                .yMap.get(key)}". Previous value: "".`,
-            ); */
           }
         },
       );

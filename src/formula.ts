@@ -20,13 +20,6 @@ const { FormulaHelpers, Types, FormulaError, MAX_ROW, MAX_COLUMN } =
   FormulaParser;
 
 //Error handling
-/* FormulaError.DIV0: #DIV/0!
-FormulaError.NA: #N/A
-FormulaError.NAME: #NAME?
-FormulaError.NULL: #NULL!
-FormulaError.NUM: #NUM!
-FormulaError.REF: #REF!
-FormulaError.VALUE: #VALUE! */
 
 let data: (string | number)[][] = [];
 let markedCells: string[];
@@ -89,11 +82,8 @@ const parser = new FormulaParser({
       const innerArr = [];
       if (data[row - 1]) {
         for (let col = ref.from.col; col <= ref.to.col; col++) {
-          /* console.log(`col: ${yColumns.get(col - 1)}`);
-          console.log(`row: ${yRows.get(row - 1)}`); */
           let cellId: string = `${yColumns.get(col - 1)},${yRows.get(row - 1)}`;
-          /*           console.log(`yMap: ${yMap.get(cellId)![0].content}`);
-           */ innerArr.push(data[row - 1][col - 1]); // this library uses 1-based index
+          innerArr.push(data[row - 1][col - 1]); // this library uses 1-based index
           markedCells.push(cellId);
         }
       }

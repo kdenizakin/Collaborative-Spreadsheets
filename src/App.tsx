@@ -59,6 +59,7 @@ function App() {
         reopenWsConnection={reopenWsConnection}
         yDoc={yDoc}
       />
+      SUM(A1:B2)
     </>
   );
 }

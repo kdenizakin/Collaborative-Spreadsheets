@@ -87,7 +87,6 @@ function Cell(props: any) {
             console.log("formula: ", currentCell.formula);
           } else if (change.action === "update" && cellId !== key) {
             // one of the formula cells has been updated.
-            /* setContent(yMap!.get(cellId)![0].content); */
           } else if (
             change.action === "add" &&
             cellId === key &&
@@ -121,23 +120,38 @@ function Cell(props: any) {
   const registerFormulaElementCells = (toBeRegisteredCell: string) => {
     let refCell = getCellContent(toBeRegisteredCell);
 
-    if (refCell !== undefined) {
-      refCell![0].formulaReferenceCellIds?.push(cellId);
+    if (refCell !== undefined && refCell[0]) {
+      const currentCell = refCell[0];
+      const currentRefs = currentCell.formulaReferenceCellIds || [];
 
-      console.log(`${JSON.stringify(refCell![0].formulaReferenceCellIds)}`);
+      if (!currentRefs.includes(cellId)) {
+        const newRefs = [...currentRefs, cellId];
+
+        setYMapContent(
+          toBeRegisteredCell,
+          currentCell.id,
+          currentCell.content,
+          currentCell.formula,
+          newRefs,
+          currentCell.markedCells,
+        );
+      }
     } else console.log(`Cell is undefined ${toBeRegisteredCell}!`);
   };
 
   const deregisterFormulaElementCells = (toBeDeregisteredCell: string) => {
     let refCell = getCellContent(toBeDeregisteredCell);
-    /* console.log(
-      `initial cells: ${JSON.stringify(yMap.get(toBeDeregisteredCell)![0])}`,
-    ); */
-    if (refCell !== undefined) {
-      refCell![0].formulaReferenceCellIds = [];
-      /* console.log(
-        `updated cells: ${JSON.stringify(yMap.get(toBeDeregisteredCell)![0])}`,
-      ); */
+
+    if (refCell !== undefined && refCell[0]) {
+      const currentCell = refCell[0];
+      setYMapContent(
+        toBeDeregisteredCell,
+        currentCell.id,
+        currentCell.content,
+        currentCell.formula,
+        [],
+        currentCell.markedCells,
+      );
     } else console.log(`Cell is undefined ${toBeDeregisteredCell}!`);
   };
 
@@ -152,6 +166,7 @@ function Cell(props: any) {
       setContent(currentCell.content);
       return;
     }
+    console.log(currentCell);
 
     const formulaPattern = /[A-Z]+\([A-Z*][0-9]+:[A-Z*][0-9]+\)/; //we should first check if the given text is a formula or not.
     const isValidFormula = formulaPattern.test(e.target.value as string);
@@ -187,8 +202,6 @@ function Cell(props: any) {
         return;
       }
       currentCell.markedCells = result.markedCells;
-      /*       console.log(currentCell.markedCells);
-       */
       for (let i = 0; i < result.markedCells.length; i++) {
         registerFormulaElementCells(result.markedCells[i]);
       }
@@ -263,8 +276,6 @@ function Cell(props: any) {
         i++
       ) {
         //now deregister all the marked cells.
-        /*         console.log(`result.markedCells[i]: ${result.markedCells[i]}`);
-         */
         deregisterFormulaElementCells(currentCell.markedCells[i]);
       }
 
