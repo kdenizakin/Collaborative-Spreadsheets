@@ -46,8 +46,6 @@ function Cell(props: any) {
   const [content, setContent] = useState<string>(getInitialContent());
 
   useEffect(() => {
-    const setYmapEntry = useYMapStore.getState().setEntry;
-
     const observer = (yMapEvent: any) => {
       yMapEvent.changes.keys.forEach(
         (change: { action: string; oldValue: any }, key: string) => {

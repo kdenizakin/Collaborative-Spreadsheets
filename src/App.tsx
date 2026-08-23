@@ -14,7 +14,7 @@ function App() {
 
   useEffect(() => {
     const wsProvider = new WebsocketProvider(
-      "ws://localhost:1236",
+      "ws://localhost:1234",
       "my-roomname",
       yDoc,
     );
