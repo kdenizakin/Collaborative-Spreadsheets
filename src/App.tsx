@@ -4,7 +4,7 @@ import "primeicons/primeicons.css";
 import SpreadSheet from "./components/SpreadSheet.tsx";
 import { WebsocketProvider } from "y-websocket";
 import { useEffect, useState } from "react";
-import { useYDocStore, useYMapStore } from "./YjsStore.ts";
+import { useYDocStore } from "./YjsStore.ts";
 
 function App() {
   let [isConnected, setIsConnected] = useState<boolean>(false);

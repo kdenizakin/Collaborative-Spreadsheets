@@ -6,6 +6,7 @@ import {
   useYColKeepStore,
   useYRowKeepStore,
 } from "../YjsStore";
+import { handleFormula } from "../formula.ts";
 
 type RemoveKeepOperationId = `c${number}.${number}`;
 
@@ -21,7 +22,7 @@ type CellType = {
 };
 
 function Cell(props: any) {
-  const { row, col, handleFormula } = props;
+  const { row, col } = props;
 
   //-----------------------------Yjs States-----------------------------
   const YDoc = useYDocStore.getState().YDoc;
@@ -291,7 +292,7 @@ function Cell(props: any) {
     yRowKeep.set(row.id, [keepId]);
   };
 
-  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+  const handleFocus = () => {
     let currentCellArray = getCurrentCellContent();
     if (currentCellArray && currentCellArray[0]) {
       let currentCell = currentCellArray[0];
