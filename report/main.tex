@@ -1,0 +1,135 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage[backend=biber, style=numeric]{biblatex}
+\addbibresource{references.bib}
+
+\usepackage{hyperref}
+\usepackage{listings}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    urlcolor=blue,
+    citecolor=blue
+}
+
+\title{\textbf{FormulaSync: A Coordination of Shared State and Formulas in Collaborative Spreadsheets}}
+\author{Korhan Deniz AKIN}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+\newpage
+
+\section{General Information}
+
+In this research, the aim was to build a collaborative spreadsheet that supports formula parsing like Microsoft Excel. React.js and TypeScript are used to build the application. Typescript is chosen instead of Javascript because it provides strict typing.
+Synchronization across multiple clients was achieved by Yjs, which is a JavaScript framework that uses Conflict-free Replicated Data Types (CRDTs) with an abstraction of shared data \cite{yjs}. Zustand is used for global React state management. Real-time updates are transmitted to the connected peers using a WebSocket layer which is implemented by y-websocket.
+
+\section{Problem Definition}
+
+\section{Related Work}
+\subsection{Semantics for CRDT-based Collaborative Spreadsheets}
+\subsection{AegisSheet: A Compositional CRDT for Collaborative Spreadsheets}
+\subsection{Collabs Spreadsheet Prototype}
+\subsection{Bartosz Sypytkowski’s 2D Table CRDT}
+\subsection{Concordant CRDT Spreadsheet}
+\subsection{FortuneSheet}
+\subsection{TinyCld Calc}
+\subsection{Framacalc}
+
+\section{Representing Spreadsheet Data in Yjs}
+
+
+Representing spreadsheet in a collaborative environment was quite straightforward. Yjs framework was very useful because it abstracts all the network broadcasting messages, CRDT implementations, merging updates with CRDTs, and even WebSocket connections. Therefore, none of these aspects are needed to be reimplemented. However, using this framework with React’s state management was the hardest part because Yjs only solves synchronization between other clients not how the client’s screen is updated and how does the data is displayed. In relevant sections this will be explained further.  
+
+The implementation uses 2 arrays and a map. These arrays store cell IDs and are crucial to display them on the table with respect to the order. The map is used to store the content of the cells. This means there is no global grid, which might cause bottlenecks during adding/removing columns/rows so, instead of storing the entire table as a matrix, the sheet is stored into separate structures.
+
+\subsection{YColumns \& YRows (SpreadSheet.tsx)}
+
+These are CRDT-based arrays that are responsible for ordering cells in the spreadsheet. Using a map structure is not enough to ensure ordering, because maps are unordered. 
+
+They appear in the SpreadSheet.tsx component. In this component, YColumns and YRows are used to transfer cell IDs to the Spreadsheet’s React State when this component is mounted. Later, ‘columns’ and ‘rows’ states are used in the table to display the content. They show how the spreadsheet synchronizes the Yjs shared column data with the local React state. Because Yjs data structures live outside of the React state, changes in Yjs do not trigger a re-render in the user interface (as mentioned before). An observer function inside ‘useEffect’ bridges this gap. When a user adds or removes a column, the observer function receives an event: 
+
+\begin{itemize}
+    \item Insertions: When new column IDs are inserted, their target index is found using ‘findYArrayElement’ function. The new column is inserted into the local ‘columns’ array.
+    \item Deletions: Deleted column IDs are collected from into a data structure. Then the local React state is then updated by filtering out these deleted columns.
+\end{itemize}
+
+\subsection{YMap (Cell.tsx)}
+
+To keep values of each cell, YMap structure was used. It’s a CRDT-based key-value (Yjs provided abstraction for CRDTs as mentioned) pair where ids are defined as: \\ \verb|let cellId: string = `${col.id},${row.id}`;| \\ and contents are just texts. To use the YMap effectively, for every Cell on the spreadsheet, an observer is defined. This observer is responsible for keeping track of the remote updates of the Cell’s own content. This comes with a performance cost, but the benefits are not negligible. This was the most convenient approach so far rather than using a global grid. 
+
+First, with this approach, storing Cell components in a global grid was not needed. If there was a global grid, adding or removing rows/columns would be costly because of shifting all the remaining elements.
+
+This observer also has an implementation for Update-Wins CRDT. The idea behind it is to store updates that are concurrent to each other (e.g., offline clients performing updates) and merge them by concatenation. That's the reason why YMap entries have arrays as their values. Later appendConcurrentUpdates()is called to do string concatenation (merging concurrent updates).
+
+\subsection{YColKeep \& YRowKeep (SpreadSheet.tsx)}
+
+With the standard Yjs, data was lost when a user modified a cell and, at the same time, another user deleted the corresponding column or row. SpreadSheet addresses such data loss by using “keep” arrays for columns and rows \cite{yanakieva2023study}. When there is a “positive update” on a cell: “keep id” \\ \verb |let keepId: RemoveKeepOperationId = `c${YDoc.clientID as number}.${1 as number}`;| is stored in those arrays. Clients monitor the changes of arrays with observers, and if they are non-empty, “undo” operations are performed equal to the number of elements in the array structures.
+
+\section{Formula Support}
+
+\subsection{Information}
+
+Supporting formulas in a collaborative environment would be interesting for several reasons:
+
+\begin{enumerate}
+    \item The implementation itself.
+    \item Retrieving spreadsheet data for formula calculation. What is the feasible way of doing this without ruining the spreadsheet if there are offline users too?
+    \item Formula recalculation for every update and its probable bottlenecks. For example, let’s say a result is computed for a formula using 1000 cells and a user updates one cell value by incrementing it by one. In this scenario, should the formula be calculated from the very beginning, or is it possible to support this functionality more efficiently? While the current implementation does so by recalculating the formula, hard coding improvements by addressing supported formulas is possible.
+    \item What happens when a new row or column is added in between formula reference cells? (To be implemented)
+    \item Addressing probable issues such as circular referencing during calculation and recalculation.
+\end{enumerate}
+
+\subsection{Implementation Details}
+
+In this section, relevant parts of functions/components for formula calculation will be explained.
+
+\subsubsection{Formula Parser}
+
+First, the \texttt{`fast-formula-parser`} \cite{fastformula} library has been used for formula functionality. The main implementation for this library is in ‘formula.ts’. In this file, there are 2 functions: ‘parser()’, which comes from the library itself, and ‘parserDriver()’ which calls the parser() with ‘spreadsheetData’ obtained in the Spreadsheet component. 
+
+This parserDriver() function returns the formula result and returns the IDs of the cells that have been marked (or registered) while computing the formula result.
+
+
+\subsubsection{Spreadsheet Store}
+
+To retrieve the store globally, Zustand, which is a small, fast, and scalable state management solution \cite{zustand}, has been used. It is like Redux but was easier to implement.
+
+Normally, the direction for the data transfer is from the parent to the child. However, it would not have been feasible to transfer all spreadsheet data from the Spreadsheet component to every Cell. The second solution requires spreadsheet data*num of total cells. With Zustand, there is a single spreadsheet used for formula calculations.
+
+‘spreadSheetData’ is the name of the object that contains all values in each cell and is a matrix of strings obtained from ‘SpreadSheetStore.ts’: ‘returnSpreadSheet()’. As mentioned in section 3.1 this function returns all spreadsheet data (optimization might be possible).
+
+\subsubsection{SpreadSheet Component}
+
+The SpreadSheet component provides a table by implementing the PrimeReact library's DataTable structure with the Yjs framework. While the table's rows and columns are tracked via Yjs arrays (yRows, yColumns), observers ensure that all additions and deletions are reflected in the local React state. When a new row or column is created, the corresponding cells are automatically created in the shared map, and deletion operations trigger both map cleanup and undo mechanisms. This component also consists of other components, which are headers (ColumnHeader), cells (Cell), and buttons.
+
+\paragraph{handleFormula()}
+
+\subsubsection{Cell Component}
+
+\paragraph{handleFocusOut()}
+
+Formula cells register candidate cells in the ‘markedCells[]’ array when the formula is defined to compute the result. Similarly, candidate cells store IDs of the formula cells in the ‘formulaReferenceCells[]’ array. This is an array because there might be multiple formula cells registering the same cell. These 2 arrays are kept in every Cell component and are defined in ‘CellType’. Arrays are optional, denoted with “?”, so it is not a problem if they are undefined.
+
+After these operations, the ‘handleFocusOut()’ function in the Cell component is responsible for the formula recalculation as shown in Figure~\ref{fig:recalccond}. 
+
+\subsection{Circular Reference Handling}
+
+A circular reference occurs when a formula refers directly or indirectly back to its own cell value, creating an endless calculation loop. For example, if cell A1 contains the formula =A1+B1, then A1 references itself \cite{macabacus}. Actually, it is not an issue when defining the formula (the cell is not yet related to the corresponding formula). However, when there are updates to cells marked by formulas, a circular reference becomes apparent. Meaningly, when there is formula recalculation (as explained in section 0). 
+
+The implementation does not produce an endless loop because formula recalculation does not use observers. Rather, it is being done via the `handleFocusOut()` function in Cell components. Therefore, a formula is calculated via `handleFocusOut()` calls. Even though there are no calculation infinite loops, when a user wants to increase a cell value by one (if the cell is marked and the formula is SUM), as in a circular reference case, formula cells register themselves, the existing result from the previous step, so it does not increase by one rather formula's previous result + 1. This produces a result that the user does not intend.
+
+To solve this, Microsoft Excel’s approach is used. When it detects a circular reference, the formula value is set to 0. In my implementation, I have a very basic approach that can be seen in Figure~\ref{fig:circularref}. This approach might be improved in terms of time complexity via Depth-First Search. 
+
+\subsection{Benchmarking}
+
+\section{CSV Support}
+
+\printbibliography
+\end{document}
+
