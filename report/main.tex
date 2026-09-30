@@ -1,6 +1,6 @@
 \documentclass{article}
 \usepackage[utf8]{inputenc}
-\usepackage[backend=biber, style=numeric]{biblatex}
+\usepackage[style=apa, backend=biber]{biblatex}
 \addbibresource{references.bib}
 
 \usepackage{hyperref}
@@ -38,24 +38,56 @@ Real-time updates are transmitted to the connected peers using a WebSocket layer
 
 \section{Related Work}
 \subsection{Semantics for CRDT-based Collaborative Spreadsheets}
-Our research builds upon the work of Yanakieva et al. (2023). In their work, they compared several data models 
+Our research builds upon the work of \textcite{yanakieva2023study}. In their work, they compared several data models 
 on implementing collaborative spreadsheets and proposed an implementation
 which supports conflict resolution for offline operations using a combination of existing replicated data types provided by Yjs. 
 They proposed a new data model called "Fixed Elements (Remove-keep)" to prevent data loss when a user modifies a cell and, 
 at the same time, another user deletes the corresponding column or row. 
 They did this by using two y-arrays (to keep track of the orders of cell ids), a y-map (to associate cell ids to their contents) 
-and two "keep" y-maps for columns and rows. The idea is to store the "keep" ids in these maps when there is a "positive update" on a cell.
-If there is a removal opeartion concurrent to the positive update, the "keep" ids are used to undo the removal operation. 
-Y.UndoManager is used to implement the undo operation.
+and two "keep" y-maps for columns and rows. 
+The idea is to store the "keep" ids in these maps when there is a "positive update" on a cell.
+If there is a removal operation concurrent to the positive update, the "keep" ids are used to undo the removal operation. 
+Y.UndoManager was used to implement the undo operation.
 This implementation is used in our research as well. 
-Update-wins CRDT for cell contnet is also implemented in our research which was not present in the original work. 
+Update-wins CRDT for cell content and formula support is also implemented in our research which was not present in the original work. 
 
-\subsection{AegisSheet: A Compositional CRDT for Collaborative Spreadsheets}
-Another relevant work is AegisSheet, which is a compositional CRDT for collaborative spreadsheets. 
-It was implemented by Pfeil et al. (2026). 
 
-\subsection{Collabs Spreadsheet Prototype}
-\subsection{Bartosz Sypytkowski’s 2D Table CRDT}
+\subsection{AegisSheet: A Compositional CRDT for Collaborative Spreadsheets} \par
+
+Another relevant work is AegisSheet, which uses a composition of CRDTs for collaborative spreadsheets. 
+It was implemented by \textcite{pfeil2026aegissheet}. Their implementation involves conflict resolution for:
+
+\begin{itemize}
+    \item concurrent cell edit and column/row deletion as similar to the approach used in the work of \textcite{yanakieva2023study},
+    \item concurrent cell edits by using Multi-Value CRDTs (allowing user to select the desired value),
+    \item concurrent cell edit and column move,
+    \item concurrent range creation and column deletion.
+\end{itemize}
+
+In their implementation, rows and columns were stored using identifiers and 
+cell content was stored in a map with keys following orders of row/column id pairs. 
+In this form, it carries similarities to the previous study as well as to our own study.
+
+Their implementation also supports moving columns/rows and an undo feature (which are not implemented in our research).
+As demonstrated by \textcite{kleppmann2020moving}, standard list CRDTs encounter duplicate elements 
+when moving elements concurrently because move operation requires to delete an element from one posiition and insert it into another.
+Therefore, in order to handle this issue, they created a new CRDT called "ReplicatedUniqueList".
+
+
+They didn't address formula support in their implementation.
+
+\subsection{Conflict-free Replicated Spread Sheets}
+In his implementation, in comparison to our approach, he didn't use Yjs framework. Instead, he implemented the spreadsheet using
+standard arrays and LSeq data structure.
+
+
+He stored spreadsheet data in a single table. This table was constructed as an array of rows, and each row was an array of cells.
+Each cell carries last-writer-wins semantics. To do this, there is companion 'versions' table containing timestamps for each cell.
+
+
+In order to keep track of the order of rows and columns, he used LSeq data structure.
+
+
 \subsection{Concordant CRDT Spreadsheet}
 \subsection{FortuneSheet}
 \subsection{TinyCld Calc}
