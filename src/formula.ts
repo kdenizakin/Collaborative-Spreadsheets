@@ -140,17 +140,10 @@ const handleFormula = (
         timerProgressBar: true,
         didOpen: () => {
           Swal.showLoading();
-          const timer = Swal.getPopup()!.querySelector("b");
-          timerInterval = setInterval(() => {
-            timer!.textContent = `${Swal.getTimerLeft()}`;
-          }, 100);
-        },
-        willClose: () => {
-          clearInterval(timerInterval);
         },
       }).then((result) => {
         if (result.dismiss === Swal.DismissReason.timer)
-          console.log("I was closed by the timer");
+          console.log("Pop-up closed");
       });
       result = {
         markedCells: [],
