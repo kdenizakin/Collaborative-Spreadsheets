@@ -29,3 +29,68 @@
   align-items: center;
   justify-content: center;
 }
+
+.spread_sheet .sheet-column-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.spread_sheet .sheet-column-mark,
+.spread_sheet .sheet-row-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  height: 2.5rem;
+  margin: 0;
+  padding: 0;
+
+  line-height: 1;
+  font-weight: 600;
+}
+
+.spread_sheet .sheet-column-buttons {
+  display: flex;
+  align-items: center;
+  min-height: 2.5rem;
+}
+
+.spread_sheet .sheet-column-buttons > :not(button) {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+
+  margin: 0;
+  padding: 0;
+}
+
+.spread_sheet .sheet-cell-content,
+.spread_sheet .sheet-row-buttons {
+  display: flex;
+  align-items: center;
+  min-height: 2.5rem;
+}
+
+.spread_sheet .sheet-row-buttons {
+  gap: 0.25rem;
+}
+
+.spread_sheet .sheet-cell-content > * {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.spread_sheet .sheet-column-buttons .p-button,
+.spread_sheet .sheet-row-buttons .p-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+
+  margin: 0;
+  padding: 0;
+}

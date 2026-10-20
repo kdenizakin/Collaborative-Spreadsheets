@@ -1,6 +1,8 @@
 const FormulaParser = require("fast-formula-parser");
 
 import { useYMapStore, useYColumnsStore, useYRowsStore } from "./YjsStore";
+import Swal from "sweetalert2";
+import * as Y from "yjs";
 
 let yColumns = useYColumnsStore.getState().yColumns;
 let yRows = useYRowsStore.getState().yRows;
@@ -72,6 +74,28 @@ const parser = new FormulaParser({
   },
 });
 
+const findYArrayElement = (id: string, yArray: Y.Array<string>): number => {
+  let index: number = 0;
+  for (let i = 0; i < yArray.length; i++) {
+    if (id === (yArray.get(i) as string)) index = i;
+  }
+  return index;
+};
+
+const getColumnLabel = (index: number): string => {
+  return (index + 1).toString();
+};
+
+const getRowLabel = (index: number): string => {
+  let label = "";
+  let num = index;
+  while (num >= 0) {
+    label = String.fromCharCode((num % 26) + 65) + label;
+    num = Math.floor(num / 26) - 1;
+  }
+  return label;
+};
+
 const handleFormula = (
   completeFormula: string,
   position: { row: number; col: number; sheetName: string },
@@ -86,6 +110,48 @@ const handleFormula = (
     //to detect circular reference
     if (formulaCellId === result.markedCells[i]) {
       console.log("Circular reference detected!");
+      let cellColId: string = result.markedCells[i].split(",")[0];
+      let cellRowId: string = result.markedCells[i].split(",")[1];
+      let cellColPosition: string = getColumnLabel(
+        findYArrayElement(cellColId, yColumns),
+      );
+      let cellRowPosition: string = getRowLabel(
+        findYArrayElement(cellRowId, yRows),
+      );
+
+      Swal.fire({
+        title: "Circular reference detected!",
+        text:
+          "Circular reference detected on cell " +
+          cellRowPosition +
+          cellColPosition,
+        icon: "error",
+        confirmButtonText: "Got it!",
+      });
+
+      let timerInterval: NodeJS.Timeout;
+      Swal.fire({
+        title: "Circular reference detected!",
+        html:
+          "Circular reference detected on cell " +
+          cellRowPosition +
+          cellColPosition,
+        timer: 2000,
+        timerProgressBar: true,
+        didOpen: () => {
+          Swal.showLoading();
+          const timer = Swal.getPopup()!.querySelector("b");
+          timerInterval = setInterval(() => {
+            timer!.textContent = `${Swal.getTimerLeft()}`;
+          }, 100);
+        },
+        willClose: () => {
+          clearInterval(timerInterval);
+        },
+      }).then((result) => {
+        if (result.dismiss === Swal.DismissReason.timer)
+          console.log("I was closed by the timer");
+      });
       result = {
         markedCells: [],
         formulaResult: "0",

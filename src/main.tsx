@@ -5,6 +5,7 @@ import App from "./App.tsx";
 
 import { PrimeReactProvider, PrimeReactContext } from "primereact/api";
 import "primereact/resources/themes/lara-light-cyan/theme.css";
+import "sweetalert2/dist/sweetalert2.min.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

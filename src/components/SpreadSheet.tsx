@@ -39,18 +39,30 @@ let yColKeep = useYColKeepStore.getState().yColKeep;
 let yRowKeep = useYRowKeepStore.getState().yRowKeep;
 //------------------------------------------------------------------------
 
+//-----------------------------Label Helpers-----------------------------
+const getColumnLabel = (index: number): string => {
+  return (index + 1).toString();
+};
+
+const getRowLabel = (index: number): string => {
+  let label = "";
+  let num = index;
+  while (num >= 0) {
+    label = String.fromCharCode((num % 26) + 65) + label;
+    num = Math.floor(num / 26) - 1;
+  }
+  return label;
+};
+//------------------------------------------------------------------------
+
 function SpreadSheet(props: any) {
-  //-----------------------------React States-----------------------------
   const [columns, setColumns] = useState<ColumnType[]>([]);
   const [rows, setRows] = useState<RowType[]>([]);
   const [, setColumnPositionIndex] = useState<number>(0);
   const [, setRowPositionIndex] = useState<number>(0);
 
-  //------------------------------------------------------------------------
-
   const deleteMapEntry = useYMapStore((state) => state.deleteEntry);
 
-  //-----------------------------YColumns/YRows Observers-----------------------------
   useEffect(() => {
     const observer = (event: any) => {
       event.changes.delta.forEach(
@@ -65,7 +77,6 @@ function SpreadSheet(props: any) {
               ]);
               increaseColumnPositionIndexes(index);
             }
-          } else if (change.delete !== undefined) {
           }
         },
       );
@@ -84,7 +95,6 @@ function SpreadSheet(props: any) {
     };
 
     yColumns.observe(observer);
-
     return () => {
       yColumns.unobserve(observer);
     };
@@ -125,7 +135,6 @@ function SpreadSheet(props: any) {
     };
 
     yRows.observe(observer);
-
     return () => {
       yRows.unobserve(observer);
     };
@@ -156,7 +165,6 @@ function SpreadSheet(props: any) {
       }
     });
 
-    // Undo manager listeners. Filter out insertions, since they do not need to be undone.
     undoColumns.on("stack-item-added", () => {
       undoColumns.undoStack.forEach((item: any, index: any) => {
         if (item.insertions.clients.size > 0)
@@ -172,11 +180,7 @@ function SpreadSheet(props: any) {
     });
   }, []);
 
-  //------------------------------------------------------------------------
-
-  const generateRandomUid = (): string => {
-    return uuidv4(10);
-  };
+  const generateRandomUid = (): string => uuidv4(10);
 
   const findYArrayElement = (id: string, yArray: Y.Array<string>): number => {
     let index: number = 0;
@@ -192,7 +196,6 @@ function SpreadSheet(props: any) {
     ifAppend: boolean,
   ): void => {
     let newColId: string = colId;
-
     let index: number = 0;
     if (ifAppend === true) {
       index = yColumns.length;
@@ -216,7 +219,6 @@ function SpreadSheet(props: any) {
 
   const addRow = (rowId: string, row: RowType, ifAppend: boolean): void => {
     let newRowId: string = rowId;
-
     let index: number = 0;
     if (ifAppend === true) {
       index = yRows.length;
@@ -266,7 +268,6 @@ function SpreadSheet(props: any) {
 
   function removeColumn(column: ColumnType): void {
     let index: number = column.positionIndex;
-
     const colId: string = yColumns.get(index) as string;
     if (yColKeep.has(colId)) {
       yColKeep.delete(colId);
@@ -284,7 +285,6 @@ function SpreadSheet(props: any) {
 
   function removeRow(row: RowType): void {
     let index: number = row.positionIndex;
-
     if (yRows.get(index) !== undefined) {
       yRows.delete(index);
       for (let i = 0; i < yColumns.length; i++) {
@@ -322,33 +322,61 @@ function SpreadSheet(props: any) {
               dataKey="id"
               className="spread_sheet"
             >
-              {columns.map((columnData: ColumnType) => (
+              <Column
+                header="#"
+                style={{ width: "3.5rem" }}
+                bodyStyle={{
+                  verticalAlign: "middle",
+                  textAlign: "center",
+                }}
+                body={(_, options) => (
+                  <div className="sheet-row-mark">
+                    {getRowLabel(options.rowIndex)}
+                  </div>
+                )}
+              />
+
+              {columns.map((columnData: ColumnType, colIdx: number) => (
                 <Column
                   data-testid="column"
                   key={columnData.id}
                   field="content"
                   header={
-                    <div data-testid="column-header">
-                      <ColumnHeader
-                        column={columnData}
-                        generateRandomUid={generateRandomUid}
-                        addColumn={addColumn}
-                        removeColumn={removeColumn}
-                      />
+                    <div
+                      data-testid="column-header"
+                      className="sheet-column-heading"
+                    >
+                      <span className="sheet-column-mark">
+                        {getColumnLabel(colIdx)}
+                      </span>
+
+                      <div className="sheet-column-buttons">
+                        <ColumnHeader
+                          column={columnData}
+                          generateRandomUid={generateRandomUid}
+                          addColumn={addColumn}
+                          removeColumn={removeColumn}
+                        />
+                      </div>
                     </div>
                   }
+                  bodyStyle={{ verticalAlign: "middle" }}
                   body={(rowData: RowType) => (
-                    <Cell
-                      key={`${columnData.id},${rowData.id}`}
-                      row={rowData}
-                      col={columnData}
-                    />
+                    <div className="sheet-cell-content">
+                      <Cell
+                        key={`${columnData.id},${rowData.id}`}
+                        row={rowData}
+                        col={columnData}
+                      />
+                    </div>
                   )}
                 />
               ))}
+
               <Column
+                bodyStyle={{ verticalAlign: "middle" }}
                 body={(rowData: RowType, options) => (
-                  <>
+                  <div className="sheet-row-buttons">
                     <Button
                       icon="pi pi-arrow-circle-up"
                       text
@@ -359,15 +387,15 @@ function SpreadSheet(props: any) {
                           false,
                         )
                       }
-                    ></Button>
+                    />
 
                     <Button
                       icon="pi pi-minus-circle"
                       text
                       className="remove-button"
                       onClick={() => removeRow(rows[options.rowIndex])}
-                    ></Button>
-                  </>
+                    />
+                  </div>
                 )}
               />
             </DataTable>
