@@ -99,7 +99,7 @@ For example, if there are 2 elements with IDs 'a' and 'b', a new element would b
 His implementation consists of 4 main operations:
 \begin{itemize}
     \item Insertion of columns/rows. Each insertion operation assigns a timestamp to each cell which is called as 'version timestamp'. 
-    \item Update: what is interesting about this operation is that 
+    \item Update: What is interesting about this operation is that 
     it expands the table if the user tries to update a window 
     that is out of the current table's bounds.
     This approach prevents the loss of updates; 
@@ -107,14 +107,25 @@ His implementation consists of 4 main operations:
     and if a table updated by one user is larger than the one belong to the other user, 
     updates falling outside the dimensions of the smaller table would be lost.
     Each update operation assigns a timestamp to each cell which is called as 'version timestamp'. 
-    \item Delete: each delete operation has a timestamp as well. Before any deletion of a column/row, all cells on to be deleted row/column are iterated 
+    \item Delete: Each delete operation has a timestamp as well. Before any deletion of a column/row, all cells on to be deleted row/column are iterated 
     and the 'version timestamp' of a cell is compared with the deletion timestamp.
     If the version timestamp is greater than the deletion timestamp, it means there is a concurrent update operation of a cell. 
     In this case, deletion is not performed.
     If that's not the case the cell value is set to null.
     If the column/row has only null values left, then it is deleted from the table.
-    \item Select:
+    \item Selection: To select a window of cells. This operation consists of a set of applications such as formula ranges (e.g. SUM (A1:B2)), 
+    applying a set of formatting attributes to multiple cells, merging cells and preventing displayed content to be changed unexpectedly 
+    when there is a copy/paste operation from another user. As he mentioned, this operation comes with a problem of concurrent row/column addition or deletion. 
+    For example, if a user selects a range of cells (e.g. SUM (A1:B2)) and another user deletes a column/row in that range, the range will differ from our initial selection.
+    To address this issue, he proposed a solution that is based on the idea of logical indexing. Two opposite points of the intended selection are represented as
+    logical indexes. These indexes are again implemented with LSeq data structure. 
 \end{itemize}
+
+In the blog of \textcite{sypytkowski2023crdttables}, he mentioned some optimizations as well. Such as "Indexing Selections" using R-Trees for selections 
+in order to listen to changes in the selected cells and recalculate formulas accordingly. However, he didn't implement this feature, and later he mentioned that 
+benefits are negligible compared to the brute-force selection of cells. 
+
+
 
 \subsection{Luckysheet}
 
