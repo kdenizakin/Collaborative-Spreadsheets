@@ -55,9 +55,11 @@ export class PriorityQueue {
 
   push(...values: string[]) {
     values.forEach((value) => {
-      this.heap.push([value]);
-      this._indexes.set(value, this.size() - 1);
-      this._shiftUp();
+      if (value !== undefined) {
+        this.heap.push([value]);
+        this._indexes.set(value, this.size() - 1);
+        this._shiftUp();
+      }
     });
     return this.size();
   }

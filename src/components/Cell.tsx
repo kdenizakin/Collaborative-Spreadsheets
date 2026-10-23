@@ -6,7 +6,7 @@ import {
   useYColKeepStore,
   useYRowKeepStore,
 } from "../YjsStore";
-import { handleFormula } from "../formula.ts";
+import { Formula } from "../Formula.ts";
 
 type RemoveKeepOperationId = `c${number}.${number}`;
 
@@ -174,24 +174,18 @@ function Cell(props: any) {
     if (isValidFormula) {
       console.log(`formula qualified ${e.target.value}`);
       formula = e.target.value;
+      let formulaInstance = new Formula(formula, cellId, {
+        row: rowIdx,
+        col: colIdx,
+        sheetName: "spreadsheet",
+      });
 
-      let result: { markedCells: string[]; formulaResult: string } =
-        handleFormula(
-          e.target.value as string,
-          {
-            row: rowIdx,
-            col: colIdx,
-            sheetName: "spreadsheet",
-          },
-          cellId,
-        );
-
-      if (result.formulaResult === "0") {
+      if (formulaInstance.getFormulaResult() === "0") {
         setYMapContent(
           cellId,
           YDoc.clientID,
           "0",
-          formula,
+          formulaInstance.getFormula(),
           currentCell.formulaReferenceCellIds,
           undefined,
         ); //update the formula cell itself (when current cell has the formula).
@@ -200,24 +194,23 @@ function Cell(props: any) {
         console.log(currentCell);
         return;
       }
-      currentCell.markedCells = result.markedCells;
-      for (let i = 0; i < result.markedCells.length; i++) {
-        registerFormulaElementCells(result.markedCells[i]);
+      currentCell.markedCells = formulaInstance.getMarkedCells();
+      for (let i = 0; i < formulaInstance.getMarkedCells().length; i++) {
+        registerFormulaElementCells(formulaInstance.getMarkedCells()[i]);
       }
       setYMapContent(
         cellId,
         YDoc.clientID,
-        result.formulaResult,
-        formula,
+        formulaInstance.getFormulaResult(),
+        formulaInstance.constructSingleFormulaString(),
         undefined,
-        currentCell.markedCells,
+        formulaInstance.getMarkedCells(),
       ); //update the formula cell itself (when current cell has the formula).
-      setContent(result.formulaResult);
-
+      setContent(formulaInstance.getFormulaResult());
       return;
     }
 
-    // this conditional is to update the content of the main formula cell. ?. is "optional chaining".
+    // this conditional is to update the content of the main formula cell. (REACTIVITY) ?. is "optional chaining".
     let i = 0;
     while (
       currentCell.formulaReferenceCellIds?.[i] !== undefined &&
@@ -231,30 +224,32 @@ function Cell(props: any) {
         undefined,
         currentCell.formulaReferenceCellIds,
         undefined,
-      ); //updating the current cell itself
+      ); //updating the current cell itself (NOT FORMULA CELL)
 
       let referencedCellId: string = currentCell.formulaReferenceCellIds[i];
-      let referencedCell = getCellContent(referencedCellId)?.[i];
+      let referencedCell = getCellContent(referencedCellId)?.[i]; //this is the formula cell that is referenced by the current cell. It has to be updated when the current cell is updated.
+      let formulaInstanceRemote = new Formula(
+        referencedCell?.formula as string,
+        referencedCellId,
+        {
+          row: rowIdx,
+          col: colIdx,
+          sheetName: "spreadsheet",
+        },
+      );
       formula = referencedCell?.formula;
 
       let result: { markedCells: string[]; formulaResult: string } =
-        handleFormula(
-          formula as string,
-          {
-            row: rowIdx,
-            col: colIdx,
-            sheetName: "spreadsheet",
-          },
-          referencedCellId,
-        );
+        formulaInstanceRemote.recalculateFormula();
 
+      let markedCellsTemp: string[] = formulaInstanceRemote.getMarkedCells();
       setYMapContent(
-        referencedCellId,
+        formulaInstanceRemote.getFormulaCellId(),
         YDoc.clientID,
-        result.formulaResult,
-        formula,
+        formulaInstanceRemote.getFormulaResult(),
+        formulaInstanceRemote.constructSingleFormulaString(),
         undefined,
-        referencedCell?.markedCells,
+        markedCellsTemp ? markedCellsTemp : undefined, //achtung: here referenced cell id might be undefined!!!!!!
       ); //here updating the referenced formula cell.
       i += 1;
     }

@@ -1,7 +1,7 @@
 import * as Y from "yjs";
 import { create } from "zustand";
 
-type YDocType = {
+export type YDocType = {
   documentId: string;
   setDocumentId: (id: string) => void;
   YDoc: any;
