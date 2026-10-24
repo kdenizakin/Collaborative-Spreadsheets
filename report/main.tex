@@ -121,7 +121,7 @@ His implementation consists of 4 main operations:
     logical indexes. These indexes are again implemented with LSeq data structure. 
 \end{itemize}
 
-In the blog of \textcite{sypytkowski2023crdttables}, he mentioned some optimizations as well. Such as "Indexing Selections" using R-Trees for selections 
+In his blog, \textcite{sypytkowski2023crdttables} mentioned some optimizations as well. Such as "Indexing Selections" using R-Trees for selections 
 in order to listen to changes in the selected cells and recalculate formulas accordingly. However, he didn't implement this feature, and later he mentioned that 
 benefits are negligible compared to the brute-force selection of cells. 
 
@@ -161,22 +161,22 @@ They appear in the SpreadSheet.tsx component.
 In this component, YColumns and YRows are used to transfer cell IDs to the Spreadsheet's React State when this component is mounted. 
 Later, 'columns' and 'rows' states are used in the table to display the content. 
 They show how the spreadsheet synchronizes the Yjs shared column data with the local React state. 
-Because Yjs data structures live outside of the React state, changes in Yjs do not trigger a re-render in the user interface (as mentioned before). 
+Because Yjs data structures live outside the React state, changes in Yjs do not trigger a re-render in the user interface (as mentioned before). 
 An observer function inside 'useEffect' bridges this gap. When a user adds or removes a column, the observer function receives an event: 
 
 \begin{itemize}
-    \item Insertions: When new column IDs are inserted, their target index is found using 'findYArrayElement' function. The new column is inserted into the local 'columns' array.
+    \item Insertions: When new column IDs are inserted, their target index is found using 'findYArrayElement' function. 
+    The new column is inserted into the local 'columns' array.
     \item Deletions: Deleted column IDs are collected from into a data structure. Then the local React state is then updated by filtering out these deleted columns.
 \end{itemize}
 
 \subsection{YMap (Cell.tsx)}
 
-To keep values of each cell, YMap structure was used. It's a CRDT-based key-value (Yjs provided abstraction for CRDTs as mentioned) pair where ids are defined as: 
-\\ \verb|let cellId: string = `${col.id},${row.id}`;| \\ and contents are just texts. 
+To keep values of each cell, YMap structure was used. It's a CRDT-based key-value (Yjs provided abstraction for CRDTs as mentioned) 
+pair where IDs are defined as: \\ \verb|let cellId: string = `${col.id},${row.id}`;| \\ and contents are just texts. 
 To use the YMap effectively, for every Cell on the spreadsheet, an observer is defined. 
 This observer is responsible for keeping track of the remote updates of the Cell's own content. 
-This comes with a performance cost, but the benefits are not negligible. 
-This was the most convenient approach so far rather than using a global grid. 
+This comes with a performance cost, but the benefits are not negligible and was the most convenient approach so far rather than using a global grid. 
 
 First, with this approach, storing Cell components in a global grid was not needed. 
 If there was a global grid, adding or removing rows/columns would be costly because of shifting all the remaining elements.
@@ -188,10 +188,14 @@ Later appendConcurrentUpdates() is called to do string concatenation (merging co
 
 \subsection{YColKeep \& YRowKeep (SpreadSheet.tsx)}
 
-With the standard Yjs, data was lost when a user modified a cell and, at the same time, another user deleted the corresponding column or row. 
-SpreadSheet addresses such data loss by using “keep” arrays for columns and rows \cite{yanakieva2023study}. 
-When there is a “positive update” on a cell: “keep id” \\ \verb |let keepId: RemoveKeepOperationId = `c${YDoc.clientID as number}.${1 as number}`;| is stored in those arrays. 
-Clients monitor the changes of arrays with observers, and if they are non-empty, “undo” operations are performed equal to the number of elements in the array structures.
+With the standard Yjs, data was lost when a user modified a cell and, at the same time,
+another user deleted the corresponding column or row. 
+To solve this problem, this implementation uses the idea of 'keep' arrays which has been proposed by \cite{yanakieva2023study}. 
+This structure prevents data loss mentioned above. 
+The solution involves storing a "keep ID" for each cell that is being modified. 
+When there is a positive update on a cell: "keep ID" \\ \verb |let keepId: RemoveKeepOperationId = `c${YDoc.clientID as number}.${1 as number}`;| 
+is stored in those arrays. Clients monitor the changes of arrays with observers, and if they are non-empty, 
+undo operations are performed equal to the number of elements in the array structures.
 
 \section{Formula Support}
 
@@ -200,19 +204,24 @@ Clients monitor the changes of arrays with observers, and if they are non-empty,
 Supporting formulas in a collaborative environment would be interesting for several reasons:
 
 \begin{enumerate}
-    \item The implementation itself.
     \item Retrieving spreadsheet data for formula calculation. 
     What is the feasible way of doing this without ruining the spreadsheet if there are offline users too?
+    \item Prevention of circular referencing during calculation and recalculation.
+    \item Reactivity of the formula cells. When a formula is defined, the corresponding cells are marked. 
+    When there is an update on these marked cells, the formula should be recalculated and the result should be displayed in the formula cell.
+    \item Shifting ranges of cells when a new row or column is added before or above the cell that stores 
+    the range of cells, or when such a row or column is deleted. 
+    \item Concurrent row/column addition and deletion between range of cells that are used in a formula.
     \item Formula recalculation for every update and its probable bottlenecks. 
-    For example, let's say a result is computed for a formula using 1000 cells and 
+    For example, let's say a result is computed for a formula using 10000 cells and 
     a user updates one cell value by incrementing it by one. 
     In this scenario, should the formula be calculated from the very beginning, 
     or is it possible to support this functionality more efficiently? 
     While the current implementation does so by recalculating the formula, 
-    hard coding improvements by addressing supported formulas is possible.
-    \item What happens when a new row or column is added in between formula reference cells? (To be implemented)
-    \item Addressing probable issues such as circular referencing during calculation and recalculation.
+    implementing more efficient algorithms is possible.
 \end{enumerate}
+
+This implementation addresses the first 5 points. The last point is not implemented yet, but it is a possible future work.
 
 \subsection{Implementation Details}
 
@@ -221,9 +230,23 @@ In this section, relevant parts of functions/components for formula calculation 
 \subsubsection{Formula Parser}
 
 First, the \texttt{`fast-formula-parser`} \cite{fastformula} library is used for formula functionality. 
-The main implementation for this library is in 'formula.ts'. 
-In this file, there are 2 functions: 'parser()', which comes from the library itself, and 'parserDriver()' 
+With this library, my implementation supports basic arithmetic operations, cell references, and range references.
+The main implementation for this library is in 'Formula.ts'.
+This class is responsible for parsing the formula, detecting circular references, and recalculating the formula
+when there are updates on the marked cells. A pop-up is displayed when a circular reference is detected. For this,
+\cite{sweetalert2} library is used.
+
+This class has several attributes, which are: 'formula', 'cellId', 'position', 'formulaResult', 'markedCells', 'operation', 'leftBoundaries', and 'rightBoundaries'.
+Attributes for left and right boundaries are used to store the leftmost and rightmost cell row and column names in a formula range (e.g. SUM(A1:B2), left boundary: A1, right boundary: B2).
+They are stored in a priority queue because when a new row or column is added in between the left and right boundaries (even concurrently), 
+the left and right boundaries should be updated by peeking priority queues. 
+For example, if the formula is SUM(A1:B2) and a new column is added between A and B, the new formula should be SUM(A1:C2). 
+To implement a priority queue, the implementation of \textcite{aissi2024priorityqueue} was used. 
+
+
+There are functions in this class which are: 'parser()', which comes from the library itself, and 'parserDriver()' 
 which calls the parser() with 'spreadsheetData' obtained in the Spreadsheet component. 
+
 
 This parserDriver() function returns the formula result and returns the IDs of the cells that have been marked 
 (or registered) while computing the formula result.
@@ -263,15 +286,31 @@ This is an array because there might be multiple formula cells registering the s
 These 2 arrays are kept in every Cell component and are defined in 'CellType'. 
 Arrays are optional, denoted with "?", so it is not a problem if they are undefined.
 
-After these operations, the 'handleFocusOut()' function in the Cell component is responsible for the formula recalculation as shown in Figure~\ref{fig:recalccond}. 
+After these operations, the 'handleFocusOut()' function in the Cell component is responsible for the formula recalculation. 
 
 \subsection{Circular Reference Handling}
 
-A circular reference occurs when a formula refers directly or indirectly back to its own cell value, creating an endless calculation loop. For example, if cell A1 contains the formula =A1+B1, then A1 references itself \cite{macabacus}. Actually, it is not an issue when defining the formula (the cell is not yet related to the corresponding formula). However, when there are updates to cells marked by formulas, a circular reference becomes apparent. Meaningly, when there is formula recalculation (as explained in section 0). 
+A circular reference occurs when a formula refers directly back to its own. This creates an endless calculation loop. 
+For example, if cell A1 contains the formula SUM(A1+B1), then A1 references itself. 
 
-The implementation does not produce an endless loop because formula recalculation does not use observers. Rather, it is being done via the `handleFocusOut()` function in Cell components. Therefore, a formula is calculated via `handleFocusOut()` calls. Even though there are no calculation infinite loops, when a user wants to increase a cell value by one (if the cell is marked and the formula is SUM), as in a circular reference case, formula cells register themselves, the existing result from the previous step, so it does not increase by one rather formula's previous result + 1. This produces a result that the user does not intend.
+The implementation does not produce an endless loop in the definition of a formula range phase. 
+Neither does formula recalculation because it does not use observers.
+Rather, it is being done via the `handleFocusOut()` function in the Cell component.
+Therefore, a formula is calculated via `handleFocusOut()` calls. 
+Even though there are no calculation infinite loops, when a user wants to increase a cell value by one 
+(if the cell is marked and the formula is SUM), as in a circular reference case, formula cells register themselves, 
+the existing result from the previous step, so it does not increase by one rather formula's previous result + 1. 
+This produces a result that the user does not intend.
 
-To solve this, Microsoft Excel's approach is used. When it detects a circular reference, the formula value is set to 0. In my implementation, I have a very basic approach that can be seen in Figure~\ref{fig:circularref}. This approach might be improved in terms of time complexity via Depth-First Search. 
+To solve this, Microsoft Excel's approach is used. When it detects a circular reference, 
+the formula value is set to 0 and a popup message is displayed to the user as displayed in Figure~\ref{fig:circularrefsweetalert2}.
+This implementation uses a very basic approach with a simple loop.
+
+\begin{figure}[h]
+\includegraphics[width=0.5\textwidth, inner]{circularrefsweetalert2}
+\caption{Caption}
+\label{fig:figure2}
+\end{figure}
 
 \subsection{Benchmarking}
 
