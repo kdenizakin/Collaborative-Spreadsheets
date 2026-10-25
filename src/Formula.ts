@@ -11,7 +11,7 @@ export class Formula {
   private formulaResult: string;
   private data: (string | number)[][] = [];
   private cellId: string;
-  private position: { row: number; col: number; sheetName: string };
+  private position: { row: number; col: string; sheetName: string };
   private markedCells: string[];
   private operation: string;
   private leftBoundaries: PriorityQueue;
@@ -20,7 +20,7 @@ export class Formula {
   public constructor(
     formula: string,
     cellId: string,
-    position: { row: number; col: number; sheetName: string },
+    position: { row: number; col: string; sheetName: string },
   ) {
     this.formula = formula;
     this.cellId = cellId;
@@ -41,6 +41,18 @@ export class Formula {
     const leftBoundary = this.leftBoundaries.peek();
     const rightBoundary = this.rightBoundaries.peek();
     return `${operation}(${leftBoundary}:${rightBoundary})`;
+  };
+
+  public findYArrayElement = (yArray: any, id: string): number => {
+    let index: number = 0;
+    for (let i = 0; i < yArray.length; i++) {
+      if (id === (yArray.get(i) as string)) index = i;
+    }
+    return index;
+  };
+
+  public refreshFormulaBoundariesWhenColumnMoved = () => {
+    // This function gets the new position of the formula cell from yrows and ycol array to change the boundaries of the formula cell. It is used when the formula cell is moved to a new position in the spreadsheet.
   };
 
   private parserDriver = (): {
@@ -122,9 +134,8 @@ export class Formula {
           title: "Circular reference detected!",
           html:
             "Circular reference detected on cell " +
-            this.position.row +
-            "," +
-            this.position.col,
+            this.position.col +
+            this.position.row,
           timer: 2000,
           timerProgressBar: true,
           didOpen: () => {

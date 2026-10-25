@@ -5,6 +5,7 @@ import {
   useYMapStore,
   useYColKeepStore,
   useYRowKeepStore,
+  useYAllFormulaCellsStore,
 } from "../YjsStore";
 import { Formula } from "../Formula.ts";
 
@@ -22,7 +23,7 @@ type CellType = {
 };
 
 function Cell(props: any) {
-  const { row, col } = props;
+  const { row, col, getColumnLabel } = props;
 
   //-----------------------------Yjs States-----------------------------
   const YDoc = useYDocStore.getState().YDoc;
@@ -33,7 +34,7 @@ function Cell(props: any) {
   //------------------------------------------------------------------------
 
   let cellId: string = `${col.id},${row.id}`;
-  let rowIdx: number = row.positionIndex;
+  let rowIdx: number = row.positionIndex + 1; //row.positionIndex is 0 based index. So we add 1 to it to get the actual row number.
   let colIdx: number = col.positionIndex;
 
   const getInitialContent = () => {
@@ -176,9 +177,18 @@ function Cell(props: any) {
       formula = e.target.value;
       let formulaInstance = new Formula(formula, cellId, {
         row: rowIdx,
-        col: colIdx,
+        col: getColumnLabel(colIdx),
         sheetName: "spreadsheet",
       });
+
+      useYAllFormulaCellsStore
+        .getState()
+        .setAllFormulaCells(
+          new Set<string>([
+            ...useYAllFormulaCellsStore.getState().allFormulaCells,
+            cellId,
+          ]),
+        ); // adding the formula cell to the set of all formula cells. To keep track of all the formula cells in the spreadsheet.
 
       if (formulaInstance.getFormulaResult() === "0") {
         setYMapContent(

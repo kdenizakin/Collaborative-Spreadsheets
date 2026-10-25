@@ -100,6 +100,14 @@ const useYRowKeepStore = create<YRowKeepType>((set) => ({
   yRowKeep: useYDocStore.getState().YDoc.getMap("row-keep"),
 }));
 
+const useYAllFormulaCellsStore = create<{
+  allFormulaCells: Set<string>;
+  setAllFormulaCells: (cells: Set<string>) => void;
+}>((set) => ({
+  allFormulaCells: new Set<string>(),
+  setAllFormulaCells: (cells: Set<string>) => set({ allFormulaCells: cells }),
+}));
+
 export {
   useYDocStore,
   useYMapStore,
@@ -110,4 +118,5 @@ export {
   useUndoMapStore,
   useYColKeepStore,
   useYRowKeepStore,
+  useYAllFormulaCellsStore,
 };

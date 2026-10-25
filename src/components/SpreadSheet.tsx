@@ -41,10 +41,6 @@ let yRowKeep = useYRowKeepStore.getState().yRowKeep;
 
 //-----------------------------Label Helpers-----------------------------
 const getColumnLabel = (index: number): string => {
-  return (index + 1).toString();
-};
-
-const getRowLabel = (index: number): string => {
   let label = "";
   let num = index;
   while (num >= 0) {
@@ -53,7 +49,13 @@ const getRowLabel = (index: number): string => {
   }
   return label;
 };
+
+const getRowLabel = (index: number): string => {
+  return (index + 1).toString();
+};
 //------------------------------------------------------------------------
+
+let allFormulaCells: Set<string> = new Set<string>();
 
 function SpreadSheet(props: any) {
   const [columns, setColumns] = useState<ColumnType[]>([]);
@@ -367,6 +369,7 @@ function SpreadSheet(props: any) {
                         key={`${columnData.id},${rowData.id}`}
                         row={rowData}
                         col={columnData}
+                        getColumnLabel={getColumnLabel}
                       />
                     </div>
                   )}
