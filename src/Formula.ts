@@ -1,12 +1,13 @@
 import { PriorityQueue } from "./SyncHeapClass";
 import { useYMapStore, useYColumnsStore, useYRowsStore } from "./YjsStore";
 import Swal from "sweetalert2";
+const yColumns = useYColumnsStore.getState().yColumns;
+const yRows = useYRowsStore.getState().yRows;
+const yMap = useYMapStore.getState().yMap;
 
 export class Formula {
   private FormulaParser = require("fast-formula-parser");
-  private yColumns = useYColumnsStore.getState().yColumns;
-  private yRows = useYRowsStore.getState().yRows;
-  private yMap = useYMapStore.getState().yMap;
+
   private formula: string;
   private formulaResult: string;
   private data: (string | number)[][] = [];
@@ -114,10 +115,10 @@ export class Formula {
         const innerArr = [];
         let { from, to } = ref;
         for (let col = from.col; col <= to.col; col++) {
-          let cellId: string = `${this.yColumns.get(col - 1)},${this.yRows.get(row - 1)}`;
+          let cellId: string = `${yColumns.get(col - 1)},${yRows.get(row - 1)}`;
 
-          if (!Number.isNaN(Number(this.yMap.get(cellId)![0].content))) {
-            innerArr.push(Number(this.yMap.get(cellId)![0].content));
+          if (!Number.isNaN(Number(yMap.get(cellId)![0].content))) {
+            innerArr.push(Number(yMap.get(cellId)![0].content));
           } else innerArr.push("");
           this.markedCells.push(cellId);
         }
@@ -196,7 +197,7 @@ export class Formula {
     return this.cellId;
   };
 
-  public getPosition = (): { row: number; col: number; sheetName: string } => {
+  public getPosition = (): { row: number; col: string; sheetName: string } => {
     return this.position;
   };
 

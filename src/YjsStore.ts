@@ -44,6 +44,9 @@ type YColKeepType = {
 type YRowKeepType = {
   yRowKeep: Y.Map<RemoveKeepOperationId[]>;
 };
+type YAllFormulaCellsType = {
+  allFormulaCells: Y.Array<string>;
+};
 
 const useYDocStore = create<YDocType>((set) => ({
   documentId: "",
@@ -100,12 +103,9 @@ const useYRowKeepStore = create<YRowKeepType>((set) => ({
   yRowKeep: useYDocStore.getState().YDoc.getMap("row-keep"),
 }));
 
-const useYAllFormulaCellsStore = create<{
-  allFormulaCells: Set<string>;
-  setAllFormulaCells: (cells: Set<string>) => void;
-}>((set) => ({
-  allFormulaCells: new Set<string>(),
-  setAllFormulaCells: (cells: Set<string>) => set({ allFormulaCells: cells }),
+const useYAllFormulaCellsStore = create<YAllFormulaCellsType>((set) => ({
+  // This holds all the formula cells in the spreadsheet. This necessary to shift formula ranges when a row or column is added or removed.
+  allFormulaCells: useYDocStore.getState().YDoc.getArray("all-formula-cells"),
 }));
 
 export {

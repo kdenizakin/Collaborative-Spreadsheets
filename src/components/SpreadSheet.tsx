@@ -17,6 +17,7 @@ import {
   useUndoMapStore,
   useYColKeepStore,
   useYRowKeepStore,
+  useYAllFormulaCellsStore,
 } from "../YjsStore";
 
 //-----------------------------Types-----------------------------
@@ -37,6 +38,7 @@ let undoRows = useUndoYRowsStore.getState().undoRows;
 let undoMap = useUndoMapStore.getState().undoMap;
 let yColKeep = useYColKeepStore.getState().yColKeep;
 let yRowKeep = useYRowKeepStore.getState().yRowKeep;
+let yAllFormulaCells = useYAllFormulaCellsStore.getState().allFormulaCells;
 //------------------------------------------------------------------------
 
 //-----------------------------Label Helpers-----------------------------
@@ -53,9 +55,54 @@ const getColumnLabel = (index: number): string => {
 const getRowLabel = (index: number): string => {
   return (index + 1).toString();
 };
-//------------------------------------------------------------------------
+const getColumnIndex = (label: string): number => {
+  let index = 0;
+  for (let i = 0; i < label.length; i++) {
+    index = index * 26 + (label.charCodeAt(i) - 65);
+  }
+  return index;
+};
 
-let allFormulaCells: Set<string> = new Set<string>();
+const compareLabels = (label1: string, label2: string): number => {
+  // Give parameters without operation. eg. A1:B1
+  const [col1, row1] = label1.split(":");
+  const [col2, row2] = label2.split(":");
+  const colIndex1 = getColumnIndex(col1);
+  const colIndex2 = getColumnIndex(col2);
+  const rowIndex1 = parseInt(row1) - 1;
+  const rowIndex2 = parseInt(row2) - 1;
+  if (colIndex1 < colIndex2) return -1;
+  if (colIndex1 > colIndex2) return 1;
+  if (rowIndex1 < rowIndex2) return -1;
+  if (rowIndex1 > rowIndex2) return 1;
+  return 0;
+};
+
+const findRightIndexForSortedInsert = (yarray: any, value: string) => {
+  let left: number = 0;
+  let right: number = yarray.length;
+
+  while (left < right) {
+    const mid: number = left + Math.floor((right - left) / 2);
+
+    if (yarray[mid] < value) {
+      left = mid + 1;
+    } else {
+      right = mid;
+    }
+  }
+
+  return left;
+};
+
+const shiftAllFormulaColumnLabelsToRight = (formula: string): string => {
+  return formula.replace(/([A-Z]+)(\d+)/g, (col, row) => {
+    const newCol = getColumnLabel(getColumnIndex(col) + 1);
+    return `${newCol}${row}`;
+  });
+};
+
+//------------------------------------------------------------------------
 
 function SpreadSheet(props: any) {
   const [columns, setColumns] = useState<ColumnType[]>([]);
@@ -216,6 +263,25 @@ function SpreadSheet(props: any) {
         colIdxrowId: `${newColId},${rowIdTemp}`,
       };
       setYmapEntry(cellId.colIdxrowId, "");
+    }
+    let highestLabelWithCurrentColId: string = `${newColId}:${yRows.length - 1}`;
+    if (
+      compareLabels(
+        highestLabelWithCurrentColId,
+        yAllFormulaCells.get(yAllFormulaCells.length - 1),
+      ) > 0
+    ) {
+      let rightIndexForShift: number = findRightIndexForSortedInsert(
+        yAllFormulaCells,
+        highestLabelWithCurrentColId,
+      );
+      for (let i = rightIndexForShift; i < yAllFormulaCells.length; i++) {
+        let newFormulaTemp: string = shiftAllFormulaColumnLabelsToRight(
+          yAllFormulaCells.get(i),
+        );
+        yAllFormulaCells.delete(i);
+        yAllFormulaCells.insert(i, [newFormulaTemp]);
+      }
     }
   };
 

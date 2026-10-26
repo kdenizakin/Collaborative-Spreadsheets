@@ -30,6 +30,7 @@ function Cell(props: any) {
   const yMap = useYMapStore.getState().yMap;
   const yColKeep = useYColKeepStore.getState().yColKeep;
   const yRowKeep = useYRowKeepStore.getState().yRowKeep;
+  const yAllFormulaCells = useYAllFormulaCellsStore.getState().allFormulaCells;
 
   //------------------------------------------------------------------------
 
@@ -155,6 +156,23 @@ function Cell(props: any) {
     } else console.log(`Cell is undefined ${toBeDeregisteredCell}!`);
   };
 
+  const findRightIndexForSortedInsert = (yarray: any, value: string) => {
+    let left: number = 0;
+    let right: number = yarray.length;
+
+    while (left < right) {
+      const mid: number = left + Math.floor((right - left) / 2);
+
+      if (yarray[mid] < value) {
+        left = mid + 1;
+      } else {
+        right = mid;
+      }
+    }
+
+    return left;
+  };
+
   const handleFocusOut = (e: React.ChangeEvent<HTMLInputElement>) => {
     if ((e.target.value as string) === yMap.get(cellId)?.[0].content) return; // optional chaining with "?.".
 
@@ -175,20 +193,17 @@ function Cell(props: any) {
     if (isValidFormula) {
       console.log(`formula qualified ${e.target.value}`);
       formula = e.target.value;
-      let formulaInstance = new Formula(formula, cellId, {
+      let formulaInstance: Formula = new Formula(formula, cellId, {
         row: rowIdx,
         col: getColumnLabel(colIdx),
         sheetName: "spreadsheet",
       });
-
-      useYAllFormulaCellsStore
-        .getState()
-        .setAllFormulaCells(
-          new Set<string>([
-            ...useYAllFormulaCellsStore.getState().allFormulaCells,
-            cellId,
-          ]),
-        ); // adding the formula cell to the set of all formula cells. To keep track of all the formula cells in the spreadsheet.
+      let formulaRange: string = formula.split("(")[1].split(")")[0]; //get the range of the formula (e.g. A1:B2)
+      let rightIndexForInsert: number = findRightIndexForSortedInsert(
+        yAllFormulaCells,
+        formulaRange,
+      );
+      yAllFormulaCells.insert(rightIndexForInsert, [formulaRange]); //insert the formula range into the yArray of all formula cells. This is used to keep track of all the formula cells in the spreadsheet.
 
       if (formulaInstance.getFormulaResult() === "0") {
         setYMapContent(
@@ -243,7 +258,7 @@ function Cell(props: any) {
         referencedCellId,
         {
           row: rowIdx,
-          col: colIdx,
+          col: getColumnLabel(colIdx),
           sheetName: "spreadsheet",
         },
       );
