@@ -64,17 +64,10 @@ const getColumnIndex = (label: string): number => {
 };
 
 const compareLabels = (label1: string, label2: string): number => {
-  // Give parameters without operation. eg. A1:B1
-  const [col1, row1] = label1.split(":");
-  const [col2, row2] = label2.split(":");
-  const colIndex1 = getColumnIndex(col1);
-  const colIndex2 = getColumnIndex(col2);
-  const rowIndex1 = parseInt(row1) - 1;
-  const rowIndex2 = parseInt(row2) - 1;
+  const colIndex1 = getColumnIndex(label1);
+  const colIndex2 = getColumnIndex(label2);
   if (colIndex1 < colIndex2) return -1;
   if (colIndex1 > colIndex2) return 1;
-  if (rowIndex1 < rowIndex2) return -1;
-  if (rowIndex1 > rowIndex2) return 1;
   return 0;
 };
 
@@ -95,11 +88,44 @@ const findRightIndexForSortedInsert = (yarray: any, value: string) => {
   return left;
 };
 
+const parseColumnLabel = (
+  // This function takes a column label (eg. A1) and returns the column name and row index.
+  label: string,
+): { columnName: string; rowIndex: number } => {
+  let index = 0;
+  for (let i = 0; i < label.length; i++) {
+    if (Number.isNaN(Number(label[i]))) {
+      index++;
+    } else {
+      break;
+    }
+  }
+  let columnName = label.substring(0, index);
+  let rowIndex = parseInt(label.substring(index));
+  return { columnName, rowIndex };
+};
+
+const shiftColumnLabelToRight = (label: string): string => {
+  const colIndex = getColumnIndex(label);
+  const newColIndex = colIndex + 1;
+  return getColumnLabel(newColIndex);
+};
+
 const shiftAllFormulaColumnLabelsToRight = (formula: string): string => {
-  return formula.replace(/([A-Z]+)(\d+)/g, (col, row) => {
-    const newCol = getColumnLabel(getColumnIndex(col) + 1);
-    return `${newCol}${row}`;
-  });
+  // This takes a formula string (SUM(A1:B2)) and shifts all the column labels to the right (SUM(B1:C2)).
+  const operation: string = formula.split("(")[0];
+  const formulaRange: string = formula.split("(")[1].split(")")[0];
+  const leftBoundary: { columnName: string; rowIndex: number } =
+    parseColumnLabel(formulaRange.split(":")[0]);
+  const rightBoundary: { columnName: string; rowIndex: number } =
+    parseColumnLabel(formulaRange.split(":")[1]);
+  const newLeftBoundary: string = shiftColumnLabelToRight(
+    leftBoundary.columnName,
+  );
+  const newRightBoundary: string = shiftColumnLabelToRight(
+    rightBoundary.columnName,
+  );
+  return `${operation}(${newLeftBoundary}${leftBoundary.rowIndex}:${newRightBoundary}${rightBoundary.rowIndex})`;
 };
 
 //------------------------------------------------------------------------
@@ -264,23 +290,35 @@ function SpreadSheet(props: any) {
       };
       setYmapEntry(cellId.colIdxrowId, "");
     }
-    let highestLabelWithCurrentColId: string = `${newColId}:${yRows.length - 1}`;
+    let currentColId: string = `${getColumnLabel(index - 1)}`;
+
     if (
+      yAllFormulaCells.length > 0 &&
       compareLabels(
-        highestLabelWithCurrentColId,
-        yAllFormulaCells.get(yAllFormulaCells.length - 1),
-      ) > 0
+        currentColId, //eg. A
+        parseColumnLabel(
+          yAllFormulaCells
+            .get(yAllFormulaCells.length - 1)
+            .formula.split("(")[1]
+            .split(")")[0]
+            .split(":")[0],
+        ).columnName, //eg. B
+      ) <= 0
     ) {
+      //if the new column is added after the last formula cell, then no need to shift any formula cells.
       let rightIndexForShift: number = findRightIndexForSortedInsert(
         yAllFormulaCells,
-        highestLabelWithCurrentColId,
+        currentColId,
       );
       for (let i = rightIndexForShift; i < yAllFormulaCells.length; i++) {
         let newFormulaTemp: string = shiftAllFormulaColumnLabelsToRight(
-          yAllFormulaCells.get(i),
+          yAllFormulaCells.get(i).formula,
         );
+        let cellId: string = yAllFormulaCells.get(i).cellId;
         yAllFormulaCells.delete(i);
-        yAllFormulaCells.insert(i, [newFormulaTemp]);
+        yAllFormulaCells.insert(i, [
+          { cellId: cellId, formula: newFormulaTemp },
+        ]);
       }
     }
   };

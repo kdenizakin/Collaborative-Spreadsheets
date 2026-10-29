@@ -45,7 +45,7 @@ type YRowKeepType = {
   yRowKeep: Y.Map<RemoveKeepOperationId[]>;
 };
 type YAllFormulaCellsType = {
-  allFormulaCells: Y.Array<string>;
+  allFormulaCells: Y.Array<{ cellId: string; formula: string }>;
 };
 
 const useYDocStore = create<YDocType>((set) => ({

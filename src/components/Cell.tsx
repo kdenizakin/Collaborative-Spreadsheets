@@ -104,6 +104,39 @@ function Cell(props: any) {
     };
   }, [useYMapStore.getState()]);
 
+  useEffect(() => {
+    const observer = (yArrayEvent: any) => {
+      if (
+        yArrayEvent.changes.delta[0].insert === undefined ||
+        yArrayEvent.changes.delta[0].insert[0].cellId !== cellId
+      )
+        return;
+      if (yArrayEvent.changes.delta[0].insert.length > 0) {
+        let newFormula: string = yArrayEvent.changes.delta[0].insert[0].formula;
+        let formulaInstance: Formula = new Formula(newFormula, cellId, {
+          row: rowIdx,
+          col: getColumnLabel(colIdx),
+          sheetName: "spreadsheet",
+        });
+        let markedCellsTemp: string[] = formulaInstance.getMarkedCells();
+
+        setYMapContent(
+          cellId,
+          YDoc.clientID,
+          formulaInstance.getFormulaResult(),
+          newFormula,
+          undefined,
+          markedCellsTemp ? markedCellsTemp : undefined,
+        );
+        console.log(`New formula added: ${newFormula}`);
+      }
+    };
+    yAllFormulaCells.observe(observer);
+    return () => {
+      yAllFormulaCells.unobserve(observer);
+    };
+  }, [yAllFormulaCells]);
+
   const appendConcurrentUpdates = (): string => {
     let cellFinalContent: string = ""; //when all the concurrent operations are appended to each other (if they exist).
     //yMap.get(cellId).length > 1 returns true if there are concurrent operations.
@@ -184,7 +217,6 @@ function Cell(props: any) {
       setContent(currentCell.content);
       return;
     }
-    console.log(currentCell);
 
     const formulaPattern = /[A-Z]+\([A-Z*][0-9]+:[A-Z*][0-9]+\)/; //we should first check if the given text is a formula or not.
     const isValidFormula = formulaPattern.test(e.target.value as string);
@@ -203,7 +235,7 @@ function Cell(props: any) {
         yAllFormulaCells,
         formulaRange,
       );
-      yAllFormulaCells.insert(rightIndexForInsert, [formulaRange]); //insert the formula range into the yArray of all formula cells. This is used to keep track of all the formula cells in the spreadsheet.
+      yAllFormulaCells.insert(rightIndexForInsert, [{ cellId, formula }]); //insert the formula range into the yArray of all formula cells. This is used to keep track of all the formula cells in the spreadsheet.
 
       if (formulaInstance.getFormulaResult() === "0") {
         setYMapContent(
@@ -227,7 +259,7 @@ function Cell(props: any) {
         cellId,
         YDoc.clientID,
         formulaInstance.getFormulaResult(),
-        formulaInstance.constructSingleFormulaString(),
+        formulaInstance.getFormula(),
         undefined,
         formulaInstance.getMarkedCells(),
       ); //update the formula cell itself (when current cell has the formula).
@@ -264,15 +296,12 @@ function Cell(props: any) {
       );
       formula = referencedCell?.formula;
 
-      let result: { markedCells: string[]; formulaResult: string } =
-        formulaInstanceRemote.recalculateFormula();
-
       let markedCellsTemp: string[] = formulaInstanceRemote.getMarkedCells();
       setYMapContent(
         formulaInstanceRemote.getFormulaCellId(),
         YDoc.clientID,
         formulaInstanceRemote.getFormulaResult(),
-        formulaInstanceRemote.constructSingleFormulaString(),
+        formulaInstanceRemote.getFormula(),
         undefined,
         markedCellsTemp ? markedCellsTemp : undefined, //achtung: here referenced cell id might be undefined!!!!!!
       ); //here updating the referenced formula cell.
