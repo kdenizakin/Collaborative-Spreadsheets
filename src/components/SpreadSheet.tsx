@@ -128,6 +128,19 @@ const shiftAllFormulaColumnLabelsToRight = (formula: string): string => {
   return `${operation}(${newLeftBoundary}${leftBoundary.rowIndex}:${newRightBoundary}${rightBoundary.rowIndex})`;
 };
 
+const shiftAllFormulaRowLabelsToDown = (formula: string): string => {
+  // This takes a formula string (SUM(A1:B2)) and shifts all the row labels down (SUM(A2:B3)).
+  const operation: string = formula.split("(")[0];
+  const formulaRange: string = formula.split("(")[1].split(")")[0];
+  const leftBoundary: { columnName: string; rowIndex: number } =
+    parseColumnLabel(formulaRange.split(":")[0]);
+  const rightBoundary: { columnName: string; rowIndex: number } =
+    parseColumnLabel(formulaRange.split(":")[1]);
+  const newLeftBoundary: string = leftBoundary.columnName;
+  const newRightBoundary: string = rightBoundary.columnName;
+  return `${operation}(${newLeftBoundary}${leftBoundary.rowIndex + 1}:${newRightBoundary}${rightBoundary.rowIndex + 1})`;
+};
+
 //------------------------------------------------------------------------
 
 function SpreadSheet(props: any) {
@@ -265,6 +278,93 @@ function SpreadSheet(props: any) {
     return index;
   };
 
+  const checkIfFormulaRangeUpdateNecessary = (
+    addedElement: string,
+    currentElementIdx: number,
+  ): boolean => {
+    if (addedElement === "row") {
+      let currentRowId: string = `${currentElementIdx}`;
+      let temp: string = yAllFormulaCells
+        .get(0)
+        .formula.split("(")[1]
+        .split(")")[0]
+        .split(":")[0]
+        .replace(/[^0-9]/g, "");
+
+      if (
+        yAllFormulaCells.length > 0 &&
+        parseInt(
+          yAllFormulaCells
+            .get(0)
+            .formula.split("(")[1]
+            .split(")")[0]
+            .split(":")[0]
+            .replace(/[^0-9]/g, ""),
+        ) < parseInt(currentRowId)
+      ) {
+        return true;
+      }
+    } else if (addedElement === "col") {
+      let currentColId: string = `${getColumnLabel(currentElementIdx)}`;
+      if (
+        yAllFormulaCells.length > 0 &&
+        compareLabels(
+          currentColId, //eg. A
+          parseColumnLabel(
+            yAllFormulaCells
+              .get(0)
+              .formula.split("(")[1]
+              .split(")")[0]
+              .split(":")[0],
+          ).columnName,
+        ) <= 0
+      ) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const updateFormulaRanges = (
+    addedElement: string,
+    currentElementIdx: number,
+  ) => {
+    //if the new column is added after the last formula cell, then no need to shift any formula cells.
+    if (addedElement === "row") {
+      let currentRowId: string = `${currentElementIdx + 1}`;
+      let rightIndexForShift: number = findRightIndexForSortedInsert(
+        yAllFormulaCells,
+        currentRowId,
+      );
+      for (let i = rightIndexForShift; i < yAllFormulaCells.length; i++) {
+        let newFormulaTemp: string = shiftAllFormulaRowLabelsToDown(
+          yAllFormulaCells.get(i).formula,
+        );
+        let cellId: string = yAllFormulaCells.get(i).cellId;
+        yAllFormulaCells.delete(i);
+        yAllFormulaCells.insert(i, [
+          { cellId: cellId, formula: newFormulaTemp },
+        ]);
+      }
+    } else if (addedElement === "col") {
+      let currentColId: string = `${getColumnLabel(currentElementIdx)}`;
+      let rightIndexForShift: number = findRightIndexForSortedInsert(
+        yAllFormulaCells,
+        currentColId,
+      );
+      for (let i = rightIndexForShift; i < yAllFormulaCells.length; i++) {
+        let newFormulaTemp: string = shiftAllFormulaColumnLabelsToRight(
+          yAllFormulaCells.get(i).formula,
+        );
+        let cellId: string = yAllFormulaCells.get(i).cellId;
+        yAllFormulaCells.delete(i);
+        yAllFormulaCells.insert(i, [
+          { cellId: cellId, formula: newFormulaTemp },
+        ]);
+      }
+    }
+  };
+
   const addColumn = (
     colId: string,
     column: ColumnType,
@@ -290,36 +390,14 @@ function SpreadSheet(props: any) {
       };
       setYmapEntry(cellId.colIdxrowId, "");
     }
-    let currentColId: string = `${getColumnLabel(index - 1)}`;
 
-    if (
-      yAllFormulaCells.length > 0 &&
-      compareLabels(
-        currentColId, //eg. A
-        parseColumnLabel(
-          yAllFormulaCells
-            .get(yAllFormulaCells.length - 1)
-            .formula.split("(")[1]
-            .split(")")[0]
-            .split(":")[0],
-        ).columnName, //eg. B
-      ) <= 0
-    ) {
-      //if the new column is added after the last formula cell, then no need to shift any formula cells.
-      let rightIndexForShift: number = findRightIndexForSortedInsert(
-        yAllFormulaCells,
-        currentColId,
-      );
-      for (let i = rightIndexForShift; i < yAllFormulaCells.length; i++) {
-        let newFormulaTemp: string = shiftAllFormulaColumnLabelsToRight(
-          yAllFormulaCells.get(i).formula,
-        );
-        let cellId: string = yAllFormulaCells.get(i).cellId;
-        yAllFormulaCells.delete(i);
-        yAllFormulaCells.insert(i, [
-          { cellId: cellId, formula: newFormulaTemp },
-        ]);
-      }
+    let shouldUpdateFormulaRanges: boolean = checkIfFormulaRangeUpdateNecessary(
+      "col",
+      index,
+    );
+
+    if (shouldUpdateFormulaRanges) {
+      updateFormulaRanges("col", index);
     }
   };
 
@@ -347,6 +425,15 @@ function SpreadSheet(props: any) {
       };
       ids.push(cellId);
       setYmapEntry(cellId.colIdxrowId, "");
+    }
+
+    let shouldUpdateFormulaRanges: boolean = checkIfFormulaRangeUpdateNecessary(
+      "row",
+      index,
+    );
+
+    if (shouldUpdateFormulaRanges) {
+      updateFormulaRanges("row", index);
     }
   };
 
