@@ -1,6 +1,7 @@
 import { PriorityQueue } from "./SyncHeapClass";
 import { useYMapStore, useYColumnsStore, useYRowsStore } from "./YjsStore";
 import Swal from "sweetalert2";
+
 const yColumns = useYColumnsStore.getState().yColumns;
 const yRows = useYRowsStore.getState().yRows;
 const yMap = useYMapStore.getState().yMap;
@@ -17,6 +18,7 @@ export class Formula {
   private operation: string;
   private leftBoundaries: PriorityQueue;
   private rightBoundaries: PriorityQueue;
+  private ifCircularReferenceDetected: boolean = false;
 
   public constructor(
     formula: string,
@@ -31,8 +33,22 @@ export class Formula {
     this.operation = "";
     this.leftBoundaries = new PriorityQueue("Min", cellId);
     this.rightBoundaries = new PriorityQueue("Max", cellId);
+    this.ifCircularReferenceDetected = false;
     this.handleFormula(); //this sets values of 'markedCells' and 'formulaResult' attributes and boundaries.
   }
+
+  public toJson = (): string => {
+    return JSON.stringify({
+      formula: this.formula,
+      cellId: this.cellId,
+      position: this.position,
+      formulaResult: this.formulaResult,
+      markedCells: this.markedCells,
+      ifCircularReferenceDetected: this.ifCircularReferenceDetected,
+      operation: this.operation,
+    });
+  };
+
   // This function is used to construct a single formula string from the left and right boundaries of the formula.
   public constructSingleFormulaString = (): string => {
     if (this.leftBoundaries.isEmpty() || this.rightBoundaries.isEmpty()) {
@@ -127,6 +143,7 @@ export class Formula {
       return arr;
     },
   });
+
   private detectCircularReference = (markedCells: string[]): boolean => {
     for (let i = 0; i < markedCells.length; i++) {
       if (this.cellId === markedCells[i]) {
@@ -147,6 +164,7 @@ export class Formula {
             console.log("Pop-up closed");
         });
         this.markedCells = [];
+        this.ifCircularReferenceDetected = true;
         this.formulaResult = "0";
         return true;
       }
@@ -207,5 +225,13 @@ export class Formula {
 
   public getMarkedCells = (): string[] => {
     return this.markedCells;
+  };
+
+  public getIfCircularReferenceDetected = (): boolean => {
+    return this.ifCircularReferenceDetected;
+  };
+
+  public getOperation = (): string => {
+    return this.operation;
   };
 }

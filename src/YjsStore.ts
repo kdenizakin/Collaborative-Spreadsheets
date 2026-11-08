@@ -7,16 +7,8 @@ export type YDocType = {
   YDoc: any;
 };
 
-type CellType = {
-  id: string;
-  content: string;
-  formula?: string;
-  formulaReferenceCellIds?: string[]; // this points to the formula cell from the referenced cell.
-  markedCells?: string[]; // if the cell has a formula then it has to store all the referenced cells. To "register" them for updates and "deregister" them.
-};
-
 type YMapType = {
-  yMap: Y.Map<CellType[]>;
+  yMap: Y.Map<any>;
   setEntry: Function;
   deleteEntry: Function;
 };
@@ -45,7 +37,7 @@ type YRowKeepType = {
   yRowKeep: Y.Map<RemoveKeepOperationId[]>;
 };
 type YAllFormulaCellsType = {
-  allFormulaCells: Y.Array<{ cellId: string; formula: string }>;
+  allFormulaCells: Y.Array<any>;
 };
 
 const useYDocStore = create<YDocType>((set) => ({

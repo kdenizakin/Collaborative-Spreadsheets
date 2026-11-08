@@ -7,6 +7,7 @@ import { Button } from "primereact/button";
 import { nanoid as uuidv4 } from "nanoid";
 import * as Y from "yjs";
 import SpreadSheetHeader from "./SpreadSheetHeader.tsx";
+import { Formula } from "../Formula.ts";
 
 import {
   useYMapStore,
@@ -31,6 +32,7 @@ type CellId = {
 //---------------------------------------------------------------
 
 //-----------------------------Yjs States-----------------------------
+let yMap = useYMapStore.getState().yMap;
 let yColumns = useYColumnsStore.getState().yColumns;
 let yRows = useYRowsStore.getState().yRows;
 let undoColumns = useUndoYColumnsStore.getState().undoColumns;
@@ -78,7 +80,9 @@ const findRightIndexForSortedInsert = (yarray: any, value: string) => {
   while (left < right) {
     const mid: number = left + Math.floor((right - left) / 2);
 
-    if (yarray[mid] < value) {
+    if (
+      JSON.parse(yarray.get(mid)).formula.split("(")[1].split(")")[0] < value
+    ) {
       left = mid + 1;
     } else {
       right = mid;
@@ -268,6 +272,58 @@ function SpreadSheet(props: any) {
     });
   }, []);
 
+  useEffect(() => {
+    const observer = (event: any) => {
+      event.changes.delta.forEach((change: { insert: any[]; delete?: any }) => {
+        // insert is a JSON object Formula.
+        if (change.insert !== undefined) {
+          for (let i = 0; i < change.insert.length; i++) {
+            let yAllArrayInstance = change.insert;
+            let formulaJSONParsed = JSON.parse(yAllArrayInstance[i]);
+            const formulaObject = new Formula(
+              formulaJSONParsed.formula,
+              formulaJSONParsed.cellId,
+              formulaJSONParsed.position,
+            );
+            for (
+              let i = 0;
+              formulaObject !== undefined &&
+              i < formulaObject.getMarkedCells().length;
+              i++
+            ) {
+              registerFormulaElementCells(
+                formulaObject.getFormulaCellId(),
+                formulaObject.getMarkedCells()[i],
+              );
+            }
+            console.log(
+              `Formula cell ${formulaObject.getMarkedCells()} registered!`,
+            );
+            /* setYMapContent(
+                formulaObject.getMarkedCells()[i],
+                YDoc.clientID,
+                formulaObject.getFormulaResult(),
+                formulaObject.getFormula(),
+                undefined,
+                formulaObject.getMarkedCells(),
+              ); //update the formula cell itself (when current cell has the formula). */
+          }
+        }
+      });
+      const deletedIds = new Set<string>();
+
+      event.changes.deleted.forEach((item: any) => {
+        const deletedValues = item.content.getContent() as string[];
+        deletedValues.forEach((id) => deletedIds.add(id));
+      });
+    };
+
+    yAllFormulaCells.observe(observer);
+    return () => {
+      yAllFormulaCells.unobserve(observer);
+    };
+  }, [yAllFormulaCells]);
+
   const generateRandomUid = (): string => uuidv4(10);
 
   const findYArrayElement = (id: string, yArray: Y.Array<string>): number => {
@@ -278,29 +334,85 @@ function SpreadSheet(props: any) {
     return index;
   };
 
+  const registerFormulaElementCells = (
+    formulaCellId: string, // a cell used in a calculation by a formula cell.
+    targetCellId: string, // a cell used in a calculation by a formula cell.
+  ) => {
+    let refCell = yMap.get(targetCellId);
+
+    if (refCell !== undefined && refCell[0]) {
+      const currentCell = refCell[0];
+      const currentRefs = currentCell.formulaReferenceCellIds || [];
+
+      if (!currentRefs.includes(formulaCellId)) {
+        const newRefs = [...currentRefs, formulaCellId];
+        currentCell.formulaReferenceCellIds = newRefs;
+        currentCell.markedCells = currentCell.markedCells || [];
+        setYMapContent(
+          targetCellId,
+          currentCell.id,
+          currentCell.content,
+          currentCell.formula || undefined,
+          currentCell.formulaReferenceCellIds,
+        );
+      }
+    }
+  };
+
+  const deregisterFormulaElementCells = (
+    targetCellId: string, // a cell used in a calculation by a formula cell.
+  ) => {
+    let refCell = yMap.get(targetCellId);
+
+    if (refCell !== undefined && refCell[0]) {
+      const currentCell = refCell[0];
+      currentCell.formulaReferenceCellIds = [];
+      setYMapContent(
+        targetCellId,
+        currentCell.id,
+        currentCell.content,
+        currentCell.formula,
+        [], // formulaReferenceCellIds
+      );
+    }
+  };
+
+  const setYMapContent = (
+    cellID: string,
+    operationId: string | number,
+    newContent: string,
+    formula?: string,
+    formulaReferenceCellIds?: string[],
+  ) => {
+    yMap.set(cellID, []); // see: https://docs.yjs.dev/getting-started/working-with-shared-types#caveats:~:text=So%20when%20you%20modify%20a%20JSON%20object%2C%20you%20will%20actually%20change%20the%20internal%20representation%20of%20Yjs%20without%20notifying%20other%20peers%20of%20that%20change.
+    yMap.set(cellID, [
+      {
+        id: operationId,
+        content: newContent,
+        formula: formula ?? undefined,
+        formulaReferenceCellIds: formulaReferenceCellIds ?? undefined,
+      },
+    ]);
+  };
+
   const checkIfFormulaRangeUpdateNecessary = (
     addedElement: string,
     currentElementIdx: number,
   ): boolean => {
+    if (yAllFormulaCells.length === 0) return false;
     if (addedElement === "row") {
       let currentRowId: string = `${currentElementIdx}`;
-      let temp: string = yAllFormulaCells
-        .get(0)
+      // the variable below is just to find the very first formula defined in the spreadsheet.
+      let rowNumberOfTheFormula: string | undefined = JSON.parse(
+        yAllFormulaCells.get(0),
+      )
         .formula.split("(")[1]
         .split(")")[0]
         .split(":")[0]
-        .replace(/[^0-9]/g, "");
-
+        .replace(/[^0-9]/g, ""); // [^0-9]/g means: find every character that is not a digit.
       if (
         yAllFormulaCells.length > 0 &&
-        parseInt(
-          yAllFormulaCells
-            .get(0)
-            .formula.split("(")[1]
-            .split(")")[0]
-            .split(":")[0]
-            .replace(/[^0-9]/g, ""),
-        ) < parseInt(currentRowId)
+        parseInt(rowNumberOfTheFormula as string) >= parseInt(currentRowId)
       ) {
         return true;
       }
@@ -311,8 +423,7 @@ function SpreadSheet(props: any) {
         compareLabels(
           currentColId, //eg. A
           parseColumnLabel(
-            yAllFormulaCells
-              .get(0)
+            JSON.parse(yAllFormulaCells.get(0))
               .formula.split("(")[1]
               .split(")")[0]
               .split(":")[0],
@@ -338,12 +449,17 @@ function SpreadSheet(props: any) {
       );
       for (let i = rightIndexForShift; i < yAllFormulaCells.length; i++) {
         let newFormulaTemp: string = shiftAllFormulaRowLabelsToDown(
-          yAllFormulaCells.get(i).formula,
+          JSON.parse(yAllFormulaCells.get(i)).formula,
         );
-        let cellId: string = yAllFormulaCells.get(i).cellId;
+        let formulaData = JSON.parse(yAllFormulaCells.get(i));
+        let cellId: string = formulaData.cellId;
         yAllFormulaCells.delete(i);
         yAllFormulaCells.insert(i, [
-          { cellId: cellId, formula: newFormulaTemp },
+          JSON.stringify({
+            ...formulaData,
+            cellId: cellId,
+            formula: newFormulaTemp,
+          }),
         ]);
       }
     } else if (addedElement === "col") {
@@ -354,12 +470,17 @@ function SpreadSheet(props: any) {
       );
       for (let i = rightIndexForShift; i < yAllFormulaCells.length; i++) {
         let newFormulaTemp: string = shiftAllFormulaColumnLabelsToRight(
-          yAllFormulaCells.get(i).formula,
+          JSON.parse(yAllFormulaCells.get(i)).formula,
         );
-        let cellId: string = yAllFormulaCells.get(i).cellId;
+        let formulaData = JSON.parse(yAllFormulaCells.get(i));
+        let cellId: string = formulaData.cellId;
         yAllFormulaCells.delete(i);
         yAllFormulaCells.insert(i, [
-          { cellId: cellId, formula: newFormulaTemp },
+          JSON.stringify({
+            ...formulaData,
+            cellId: cellId,
+            formula: newFormulaTemp,
+          }),
         ]);
       }
     }
@@ -472,6 +593,11 @@ function SpreadSheet(props: any) {
         let rowIdTemp: string = yRows.get(i);
         let cellIdTemp: string = `${colIdTemp},${rowIdTemp}`;
         deleteMapEntry(cellIdTemp);
+        for (let i = 0; i < yAllFormulaCells.length; i++) {
+          if (JSON.parse(yAllFormulaCells.get(i)).cellId === cellIdTemp) {
+            yAllFormulaCells.delete(i);
+          }
+        }
       }
     }
   }
@@ -485,6 +611,11 @@ function SpreadSheet(props: any) {
         let rowIdTemp: string = row.id;
         let cellIdTemp: string = `${colIdTemp},${rowIdTemp}`;
         deleteMapEntry(cellIdTemp);
+        for (let i = 0; i < yAllFormulaCells.length; i++) {
+          if (JSON.parse(yAllFormulaCells.get(i)).cellId === cellIdTemp) {
+            yAllFormulaCells.delete(i);
+          }
+        }
       }
     }
     const rowId: string = yRows.get(index) as string;
