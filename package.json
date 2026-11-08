@@ -20,6 +20,7 @@
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "socket.io-client": "^4.8.3",
+    "sweetalert2": "^11.26.25",
     "vite-plugin-commonjs": "^0.10.4",
     "y-webrtc": "^10.3.0",
     "y-websocket": "^1.5.0",

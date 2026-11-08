@@ -7,6 +7,7 @@ import { Button } from "primereact/button";
 import { nanoid as uuidv4 } from "nanoid";
 import * as Y from "yjs";
 import SpreadSheetHeader from "./SpreadSheetHeader.tsx";
+import { Formula } from "../Formula.ts";
 
 import {
   useYMapStore,
@@ -17,6 +18,7 @@ import {
   useUndoMapStore,
   useYColKeepStore,
   useYRowKeepStore,
+  useYAllFormulaCellsStore,
 } from "../YjsStore";
 
 //-----------------------------Types-----------------------------
@@ -30,6 +32,7 @@ type CellId = {
 //---------------------------------------------------------------
 
 //-----------------------------Yjs States-----------------------------
+let yMap = useYMapStore.getState().yMap;
 let yColumns = useYColumnsStore.getState().yColumns;
 let yRows = useYRowsStore.getState().yRows;
 let undoColumns = useUndoYColumnsStore.getState().undoColumns;
@@ -37,20 +40,121 @@ let undoRows = useUndoYRowsStore.getState().undoRows;
 let undoMap = useUndoMapStore.getState().undoMap;
 let yColKeep = useYColKeepStore.getState().yColKeep;
 let yRowKeep = useYRowKeepStore.getState().yRowKeep;
+let yAllFormulaCells = useYAllFormulaCellsStore.getState().allFormulaCells;
+//------------------------------------------------------------------------
+
+//-----------------------------Label Helpers-----------------------------
+const getColumnLabel = (index: number): string => {
+  let label = "";
+  let num = index;
+  while (num >= 0) {
+    label = String.fromCharCode((num % 26) + 65) + label;
+    num = Math.floor(num / 26) - 1;
+  }
+  return label;
+};
+
+const getRowLabel = (index: number): string => {
+  return (index + 1).toString();
+};
+const getColumnIndex = (label: string): number => {
+  let index = 0;
+  for (let i = 0; i < label.length; i++) {
+    index = index * 26 + (label.charCodeAt(i) - 65);
+  }
+  return index;
+};
+
+const compareLabels = (label1: string, label2: string): number => {
+  const colIndex1 = getColumnIndex(label1);
+  const colIndex2 = getColumnIndex(label2);
+  if (colIndex1 < colIndex2) return -1;
+  if (colIndex1 > colIndex2) return 1;
+  return 0;
+};
+
+const findRightIndexForSortedInsert = (yarray: any, value: string) => {
+  let left: number = 0;
+  let right: number = yarray.length;
+
+  while (left < right) {
+    const mid: number = left + Math.floor((right - left) / 2);
+
+    if (
+      JSON.parse(yarray.get(mid)).formula.split("(")[1].split(")")[0] < value
+    ) {
+      left = mid + 1;
+    } else {
+      right = mid;
+    }
+  }
+
+  return left;
+};
+
+const parseColumnLabel = (
+  // This function takes a column label (eg. A1) and returns the column name and row index.
+  label: string,
+): { columnName: string; rowIndex: number } => {
+  let index = 0;
+  for (let i = 0; i < label.length; i++) {
+    if (Number.isNaN(Number(label[i]))) {
+      index++;
+    } else {
+      break;
+    }
+  }
+  let columnName = label.substring(0, index);
+  let rowIndex = parseInt(label.substring(index));
+  return { columnName, rowIndex };
+};
+
+const shiftColumnLabelToRight = (label: string): string => {
+  const colIndex = getColumnIndex(label);
+  const newColIndex = colIndex + 1;
+  return getColumnLabel(newColIndex);
+};
+
+const shiftAllFormulaColumnLabelsToRight = (formula: string): string => {
+  // This takes a formula string (SUM(A1:B2)) and shifts all the column labels to the right (SUM(B1:C2)).
+  const operation: string = formula.split("(")[0];
+  const formulaRange: string = formula.split("(")[1].split(")")[0];
+  const leftBoundary: { columnName: string; rowIndex: number } =
+    parseColumnLabel(formulaRange.split(":")[0]);
+  const rightBoundary: { columnName: string; rowIndex: number } =
+    parseColumnLabel(formulaRange.split(":")[1]);
+  const newLeftBoundary: string = shiftColumnLabelToRight(
+    leftBoundary.columnName,
+  );
+  const newRightBoundary: string = shiftColumnLabelToRight(
+    rightBoundary.columnName,
+  );
+  return `${operation}(${newLeftBoundary}${leftBoundary.rowIndex}:${newRightBoundary}${rightBoundary.rowIndex})`;
+};
+
+const shiftAllFormulaRowLabelsToDown = (formula: string): string => {
+  // This takes a formula string (SUM(A1:B2)) and shifts all the row labels down (SUM(A2:B3)).
+  const operation: string = formula.split("(")[0];
+  const formulaRange: string = formula.split("(")[1].split(")")[0];
+  const leftBoundary: { columnName: string; rowIndex: number } =
+    parseColumnLabel(formulaRange.split(":")[0]);
+  const rightBoundary: { columnName: string; rowIndex: number } =
+    parseColumnLabel(formulaRange.split(":")[1]);
+  const newLeftBoundary: string = leftBoundary.columnName;
+  const newRightBoundary: string = rightBoundary.columnName;
+  return `${operation}(${newLeftBoundary}${leftBoundary.rowIndex + 1}:${newRightBoundary}${rightBoundary.rowIndex + 1})`;
+};
+
 //------------------------------------------------------------------------
 
 function SpreadSheet(props: any) {
-  //-----------------------------React States-----------------------------
   const [columns, setColumns] = useState<ColumnType[]>([]);
   const [rows, setRows] = useState<RowType[]>([]);
   const [, setColumnPositionIndex] = useState<number>(0);
   const [, setRowPositionIndex] = useState<number>(0);
 
-  //------------------------------------------------------------------------
-
   const deleteMapEntry = useYMapStore((state) => state.deleteEntry);
 
-  //-----------------------------YColumns/YRows Observers-----------------------------
   useEffect(() => {
     const observer = (event: any) => {
       event.changes.delta.forEach(
@@ -65,7 +169,6 @@ function SpreadSheet(props: any) {
               ]);
               increaseColumnPositionIndexes(index);
             }
-          } else if (change.delete !== undefined) {
           }
         },
       );
@@ -84,7 +187,6 @@ function SpreadSheet(props: any) {
     };
 
     yColumns.observe(observer);
-
     return () => {
       yColumns.unobserve(observer);
     };
@@ -125,7 +227,6 @@ function SpreadSheet(props: any) {
     };
 
     yRows.observe(observer);
-
     return () => {
       yRows.unobserve(observer);
     };
@@ -156,7 +257,6 @@ function SpreadSheet(props: any) {
       }
     });
 
-    // Undo manager listeners. Filter out insertions, since they do not need to be undone.
     undoColumns.on("stack-item-added", () => {
       undoColumns.undoStack.forEach((item: any, index: any) => {
         if (item.insertions.clients.size > 0)
@@ -172,11 +272,59 @@ function SpreadSheet(props: any) {
     });
   }, []);
 
-  //------------------------------------------------------------------------
+  useEffect(() => {
+    const observer = (event: any) => {
+      event.changes.delta.forEach((change: { insert: any[]; delete?: any }) => {
+        // insert is a JSON object Formula.
+        if (change.insert !== undefined) {
+          for (let i = 0; i < change.insert.length; i++) {
+            let yAllArrayInstance = change.insert;
+            let formulaJSONParsed = JSON.parse(yAllArrayInstance[i]);
+            const formulaObject = new Formula(
+              formulaJSONParsed.formula,
+              formulaJSONParsed.cellId,
+              formulaJSONParsed.position,
+            );
+            for (
+              let i = 0;
+              formulaObject !== undefined &&
+              i < formulaObject.getMarkedCells().length;
+              i++
+            ) {
+              registerFormulaElementCells(
+                formulaObject.getFormulaCellId(),
+                formulaObject.getMarkedCells()[i],
+              );
+            }
+            console.log(
+              `Formula cell ${formulaObject.getMarkedCells()} registered!`,
+            );
+            /* setYMapContent(
+                formulaObject.getMarkedCells()[i],
+                YDoc.clientID,
+                formulaObject.getFormulaResult(),
+                formulaObject.getFormula(),
+                undefined,
+                formulaObject.getMarkedCells(),
+              ); //update the formula cell itself (when current cell has the formula). */
+          }
+        }
+      });
+      const deletedIds = new Set<string>();
 
-  const generateRandomUid = (): string => {
-    return uuidv4(10);
-  };
+      event.changes.deleted.forEach((item: any) => {
+        const deletedValues = item.content.getContent() as string[];
+        deletedValues.forEach((id) => deletedIds.add(id));
+      });
+    };
+
+    yAllFormulaCells.observe(observer);
+    return () => {
+      yAllFormulaCells.unobserve(observer);
+    };
+  }, [yAllFormulaCells]);
+
+  const generateRandomUid = (): string => uuidv4(10);
 
   const findYArrayElement = (id: string, yArray: Y.Array<string>): number => {
     let index: number = 0;
@@ -186,13 +334,164 @@ function SpreadSheet(props: any) {
     return index;
   };
 
+  const registerFormulaElementCells = (
+    formulaCellId: string, // a cell used in a calculation by a formula cell.
+    targetCellId: string, // a cell used in a calculation by a formula cell.
+  ) => {
+    let refCell = yMap.get(targetCellId);
+
+    if (refCell !== undefined && refCell[0]) {
+      const currentCell = refCell[0];
+      const currentRefs = currentCell.formulaReferenceCellIds || [];
+
+      if (!currentRefs.includes(formulaCellId)) {
+        const newRefs = [...currentRefs, formulaCellId];
+        currentCell.formulaReferenceCellIds = newRefs;
+        currentCell.markedCells = currentCell.markedCells || [];
+        setYMapContent(
+          targetCellId,
+          currentCell.id,
+          currentCell.content,
+          currentCell.formula || undefined,
+          currentCell.formulaReferenceCellIds,
+        );
+      }
+    }
+  };
+
+  const deregisterFormulaElementCells = (
+    targetCellId: string, // a cell used in a calculation by a formula cell.
+  ) => {
+    let refCell = yMap.get(targetCellId);
+
+    if (refCell !== undefined && refCell[0]) {
+      const currentCell = refCell[0];
+      currentCell.formulaReferenceCellIds = [];
+      setYMapContent(
+        targetCellId,
+        currentCell.id,
+        currentCell.content,
+        currentCell.formula,
+        [], // formulaReferenceCellIds
+      );
+    }
+  };
+
+  const setYMapContent = (
+    cellID: string,
+    operationId: string | number,
+    newContent: string,
+    formula?: string,
+    formulaReferenceCellIds?: string[],
+  ) => {
+    yMap.set(cellID, []); // see: https://docs.yjs.dev/getting-started/working-with-shared-types#caveats:~:text=So%20when%20you%20modify%20a%20JSON%20object%2C%20you%20will%20actually%20change%20the%20internal%20representation%20of%20Yjs%20without%20notifying%20other%20peers%20of%20that%20change.
+    yMap.set(cellID, [
+      {
+        id: operationId,
+        content: newContent,
+        formula: formula ?? undefined,
+        formulaReferenceCellIds: formulaReferenceCellIds ?? undefined,
+      },
+    ]);
+  };
+
+  const checkIfFormulaRangeUpdateNecessary = (
+    addedElement: string,
+    currentElementIdx: number,
+  ): boolean => {
+    if (yAllFormulaCells.length === 0) return false;
+    if (addedElement === "row") {
+      let currentRowId: string = `${currentElementIdx}`;
+      // the variable below is just to find the very first formula defined in the spreadsheet.
+      let rowNumberOfTheFormula: string | undefined = JSON.parse(
+        yAllFormulaCells.get(0),
+      )
+        .formula.split("(")[1]
+        .split(")")[0]
+        .split(":")[0]
+        .replace(/[^0-9]/g, ""); // [^0-9]/g means: find every character that is not a digit.
+      if (
+        yAllFormulaCells.length > 0 &&
+        parseInt(rowNumberOfTheFormula as string) >= parseInt(currentRowId)
+      ) {
+        return true;
+      }
+    } else if (addedElement === "col") {
+      let currentColId: string = `${getColumnLabel(currentElementIdx)}`;
+      if (
+        yAllFormulaCells.length > 0 &&
+        compareLabels(
+          currentColId, //eg. A
+          parseColumnLabel(
+            JSON.parse(yAllFormulaCells.get(0))
+              .formula.split("(")[1]
+              .split(")")[0]
+              .split(":")[0],
+          ).columnName,
+        ) <= 0
+      ) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const updateFormulaRanges = (
+    addedElement: string,
+    currentElementIdx: number,
+  ) => {
+    //if the new column is added after the last formula cell, then no need to shift any formula cells.
+    if (addedElement === "row") {
+      let currentRowId: string = `${currentElementIdx + 1}`;
+      let rightIndexForShift: number = findRightIndexForSortedInsert(
+        yAllFormulaCells,
+        currentRowId,
+      );
+      for (let i = rightIndexForShift; i < yAllFormulaCells.length; i++) {
+        let newFormulaTemp: string = shiftAllFormulaRowLabelsToDown(
+          JSON.parse(yAllFormulaCells.get(i)).formula,
+        );
+        let formulaData = JSON.parse(yAllFormulaCells.get(i));
+        let cellId: string = formulaData.cellId;
+        yAllFormulaCells.delete(i);
+        yAllFormulaCells.insert(i, [
+          JSON.stringify({
+            ...formulaData,
+            cellId: cellId,
+            formula: newFormulaTemp,
+          }),
+        ]);
+      }
+    } else if (addedElement === "col") {
+      let currentColId: string = `${getColumnLabel(currentElementIdx)}`;
+      let rightIndexForShift: number = findRightIndexForSortedInsert(
+        yAllFormulaCells,
+        currentColId,
+      );
+      for (let i = rightIndexForShift; i < yAllFormulaCells.length; i++) {
+        let newFormulaTemp: string = shiftAllFormulaColumnLabelsToRight(
+          JSON.parse(yAllFormulaCells.get(i)).formula,
+        );
+        let formulaData = JSON.parse(yAllFormulaCells.get(i));
+        let cellId: string = formulaData.cellId;
+        yAllFormulaCells.delete(i);
+        yAllFormulaCells.insert(i, [
+          JSON.stringify({
+            ...formulaData,
+            cellId: cellId,
+            formula: newFormulaTemp,
+          }),
+        ]);
+      }
+    }
+  };
+
   const addColumn = (
     colId: string,
     column: ColumnType,
     ifAppend: boolean,
   ): void => {
     let newColId: string = colId;
-
     let index: number = 0;
     if (ifAppend === true) {
       index = yColumns.length;
@@ -212,11 +511,19 @@ function SpreadSheet(props: any) {
       };
       setYmapEntry(cellId.colIdxrowId, "");
     }
+
+    let shouldUpdateFormulaRanges: boolean = checkIfFormulaRangeUpdateNecessary(
+      "col",
+      index,
+    );
+
+    if (shouldUpdateFormulaRanges) {
+      updateFormulaRanges("col", index);
+    }
   };
 
   const addRow = (rowId: string, row: RowType, ifAppend: boolean): void => {
     let newRowId: string = rowId;
-
     let index: number = 0;
     if (ifAppend === true) {
       index = yRows.length;
@@ -239,6 +546,15 @@ function SpreadSheet(props: any) {
       };
       ids.push(cellId);
       setYmapEntry(cellId.colIdxrowId, "");
+    }
+
+    let shouldUpdateFormulaRanges: boolean = checkIfFormulaRangeUpdateNecessary(
+      "row",
+      index,
+    );
+
+    if (shouldUpdateFormulaRanges) {
+      updateFormulaRanges("row", index);
     }
   };
 
@@ -266,7 +582,6 @@ function SpreadSheet(props: any) {
 
   function removeColumn(column: ColumnType): void {
     let index: number = column.positionIndex;
-
     const colId: string = yColumns.get(index) as string;
     if (yColKeep.has(colId)) {
       yColKeep.delete(colId);
@@ -278,13 +593,17 @@ function SpreadSheet(props: any) {
         let rowIdTemp: string = yRows.get(i);
         let cellIdTemp: string = `${colIdTemp},${rowIdTemp}`;
         deleteMapEntry(cellIdTemp);
+        for (let i = 0; i < yAllFormulaCells.length; i++) {
+          if (JSON.parse(yAllFormulaCells.get(i)).cellId === cellIdTemp) {
+            yAllFormulaCells.delete(i);
+          }
+        }
       }
     }
   }
 
   function removeRow(row: RowType): void {
     let index: number = row.positionIndex;
-
     if (yRows.get(index) !== undefined) {
       yRows.delete(index);
       for (let i = 0; i < yColumns.length; i++) {
@@ -292,6 +611,11 @@ function SpreadSheet(props: any) {
         let rowIdTemp: string = row.id;
         let cellIdTemp: string = `${colIdTemp},${rowIdTemp}`;
         deleteMapEntry(cellIdTemp);
+        for (let i = 0; i < yAllFormulaCells.length; i++) {
+          if (JSON.parse(yAllFormulaCells.get(i)).cellId === cellIdTemp) {
+            yAllFormulaCells.delete(i);
+          }
+        }
       }
     }
     const rowId: string = yRows.get(index) as string;
@@ -322,33 +646,62 @@ function SpreadSheet(props: any) {
               dataKey="id"
               className="spread_sheet"
             >
-              {columns.map((columnData: ColumnType) => (
+              <Column
+                header="#"
+                style={{ width: "3.5rem" }}
+                bodyStyle={{
+                  verticalAlign: "middle",
+                  textAlign: "center",
+                }}
+                body={(_, options) => (
+                  <div className="sheet-row-mark">
+                    {getRowLabel(options.rowIndex)}
+                  </div>
+                )}
+              />
+
+              {columns.map((columnData: ColumnType, colIdx: number) => (
                 <Column
                   data-testid="column"
                   key={columnData.id}
                   field="content"
                   header={
-                    <div data-testid="column-header">
-                      <ColumnHeader
-                        column={columnData}
-                        generateRandomUid={generateRandomUid}
-                        addColumn={addColumn}
-                        removeColumn={removeColumn}
-                      />
+                    <div
+                      data-testid="column-header"
+                      className="sheet-column-heading"
+                    >
+                      <span className="sheet-column-mark">
+                        {getColumnLabel(colIdx)}
+                      </span>
+
+                      <div className="sheet-column-buttons">
+                        <ColumnHeader
+                          column={columnData}
+                          generateRandomUid={generateRandomUid}
+                          addColumn={addColumn}
+                          removeColumn={removeColumn}
+                        />
+                      </div>
                     </div>
                   }
+                  bodyStyle={{ verticalAlign: "middle" }}
                   body={(rowData: RowType) => (
-                    <Cell
-                      key={`${columnData.id},${rowData.id}`}
-                      row={rowData}
-                      col={columnData}
-                    />
+                    <div className="sheet-cell-content">
+                      <Cell
+                        key={`${columnData.id},${rowData.id}`}
+                        row={rowData}
+                        col={columnData}
+                        getColumnLabel={getColumnLabel}
+                      />
+                    </div>
                   )}
                 />
               ))}
+
               <Column
+                bodyStyle={{ verticalAlign: "middle" }}
                 body={(rowData: RowType, options) => (
-                  <>
+                  <div className="sheet-row-buttons">
                     <Button
                       icon="pi pi-arrow-circle-up"
                       text
@@ -359,15 +712,15 @@ function SpreadSheet(props: any) {
                           false,
                         )
                       }
-                    ></Button>
+                    />
 
                     <Button
                       icon="pi pi-minus-circle"
                       text
                       className="remove-button"
                       onClick={() => removeRow(rows[options.rowIndex])}
-                    ></Button>
-                  </>
+                    />
+                  </div>
                 )}
               />
             </DataTable>

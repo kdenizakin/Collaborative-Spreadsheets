@@ -1,22 +1,14 @@
 import * as Y from "yjs";
 import { create } from "zustand";
 
-type YDocType = {
+export type YDocType = {
   documentId: string;
   setDocumentId: (id: string) => void;
   YDoc: any;
 };
 
-type CellType = {
-  id: string;
-  content: string;
-  formula?: string;
-  formulaReferenceCellIds?: string[]; // this points to the formula cell from the referenced cell.
-  markedCells?: string[]; // if the cell has a formula then it has to store all the referenced cells. To "register" them for updates and "deregister" them.
-};
-
 type YMapType = {
-  yMap: Y.Map<CellType[]>;
+  yMap: Y.Map<any>;
   setEntry: Function;
   deleteEntry: Function;
 };
@@ -43,6 +35,9 @@ type YColKeepType = {
 };
 type YRowKeepType = {
   yRowKeep: Y.Map<RemoveKeepOperationId[]>;
+};
+type YAllFormulaCellsType = {
+  allFormulaCells: Y.Array<any>;
 };
 
 const useYDocStore = create<YDocType>((set) => ({
@@ -100,6 +95,11 @@ const useYRowKeepStore = create<YRowKeepType>((set) => ({
   yRowKeep: useYDocStore.getState().YDoc.getMap("row-keep"),
 }));
 
+const useYAllFormulaCellsStore = create<YAllFormulaCellsType>((set) => ({
+  // This holds all the formula cells in the spreadsheet. This necessary to shift formula ranges when a row or column is added or removed.
+  allFormulaCells: useYDocStore.getState().YDoc.getArray("all-formula-cells"),
+}));
+
 export {
   useYDocStore,
   useYMapStore,
@@ -110,4 +110,5 @@ export {
   useUndoMapStore,
   useYColKeepStore,
   useYRowKeepStore,
+  useYAllFormulaCellsStore,
 };
